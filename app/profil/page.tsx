@@ -259,28 +259,6 @@ export default function ProfilPage() {
         </div>
 
         <div style={{ display: "grid", gap: 8 }}>
-          <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Zone</label>
-          <select
-            value={zone}
-            onChange={(e) => setZone(e.target.value as Zone)}
-            style={{
-              padding: 12,
-              borderRadius: 10,
-              border: "1px solid #2a2a2a",
-              background: "#141414",
-              color: "#fff",
-              fontSize: 14,
-            }}
-          >
-            {ZONES.map((z) => (
-              <option key={z} value={z} style={{ background: "#141414", color: "#fff" }}>
-                {z}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display: "grid", gap: 8 }}>
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Niveau</label>
           <select
             value={niveau}

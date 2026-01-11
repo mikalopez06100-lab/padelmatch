@@ -883,7 +883,7 @@ export default function PartiesPage() {
                     <div style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>🌍 Candidats proposés</div>
 
                     <div style={{ display: "grid", gap: 8 }}>
-                      {getCandidats(p.zone, blocks, profilsGlobaux).map((j) => (
+                      {getCandidats(blocks, profilsGlobaux).map((j) => (
                         <div
                           key={j.pseudo}
                           style={{
