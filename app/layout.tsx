@@ -33,6 +33,7 @@ export default function RootLayout({
             alignItems: "center",
             justifyContent: "space-evenly",
             zIndex: 100,
+            padding: "0 8px",
           }}
         >
           <Link
@@ -83,6 +84,7 @@ export default function RootLayout({
           >
             🙂 Profil
           </Link>
+          <AuthButton />
         </nav>
       </body>
     </html>
