@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { showNotification } from "../utils/notifications";
+import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
+import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 
 type Groupe = {
   id: string;
@@ -43,27 +45,10 @@ type Partie = {
   createdAt: number;
 };
 
-type Joueur = {
-  id: string;
-  pseudo: string;
-  zone: string;
-  niveau: "Débutant" | "Intermédiaire" | "Confirmé" | "Compétitif";
-  friendlyScore: number; // 0-100
-};
-
 const GROUPES_KEY = "padelmatch_groupes_v1";
 const PARTIES_KEY = "padelmatch_parties_v1";
 const PROFIL_KEY = "padelmatch_profil_v1";
 const BLOCKS_KEY = "padelmatch_blocks_v1";
-
-const JOUEURS_FIXES: Joueur[] = [
-  { id: "j1", pseudo: "Max", zone: "Nice", niveau: "Intermédiaire", friendlyScore: 82 },
-  { id: "j2", pseudo: "Sarah", zone: "Antibes", niveau: "Confirmé", friendlyScore: 90 },
-  { id: "j3", pseudo: "Nico", zone: "Nice", niveau: "Débutant", friendlyScore: 75 },
-  { id: "j4", pseudo: "Leïla", zone: "Cagnes-sur-Mer", niveau: "Intermédiaire", friendlyScore: 88 },
-  { id: "j5", pseudo: "Tom", zone: "Monaco", niveau: "Compétitif", friendlyScore: 79 },
-  { id: "j6", pseudo: "Inès", zone: "Nice", niveau: "Confirmé", friendlyScore: 92 },
-];
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -118,9 +103,9 @@ function removeBlock(pseudo: string) {
   saveBlocks(blocks.filter((p) => p !== pseudo));
 }
 
-function getCandidats(zone: string, blocks: string[]): Joueur[] {
-  const candidats = JOUEURS_FIXES.filter(
-    (j) => (j.zone === zone || j.zone === "Nice") && !blocks.includes(j.pseudo)
+function getCandidats(zone: string, blocks: string[], profilsGlobaux: ProfilGlobal[]): ProfilGlobal[] {
+  const candidats = profilsGlobaux.filter(
+    (p) => (p.zone === zone || p.zone === "Nice") && !blocks.includes(p.pseudo)
   );
   candidats.sort((a, b) => b.friendlyScore - a.friendlyScore);
   return candidats.slice(0, 4);
@@ -147,6 +132,7 @@ export default function PartiesPage() {
   const [parties, setParties] = useState<Partie[]>([]);
   const [mode, setMode] = useState<"organisateur" | "joueur">("organisateur");
   const [blocks, setBlocks] = useState<string[]>([]);
+  const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
 
   // Form state
   const [groupeId, setGroupeId] = useState("");
@@ -166,6 +152,9 @@ export default function PartiesPage() {
 
     // Charger les blocs
     setBlocks(loadBlocks());
+
+    // Charger les profils globaux
+    setProfilsGlobaux(loadProfilsGlobaux());
 
     // ✅ Migration/réparation des anciennes données
     const raw = load<any[]>(PARTIES_KEY, []);
@@ -211,6 +200,14 @@ export default function PartiesPage() {
 
     setParties(repaired);
     save(PARTIES_KEY, repaired);
+  }, []);
+
+  // Recharger les profils globaux périodiquement pour avoir les dernières mises à jour
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProfilsGlobaux(loadProfilsGlobaux());
+    }, 2000); // Recharger toutes les 2 secondes
+    return () => clearInterval(interval);
   }, []);
 
   const groupeSelectionne = useMemo(
@@ -640,9 +637,9 @@ export default function PartiesPage() {
               <option value="" style={{ background: "#141414", color: "#fff" }}>
                 Sélectionner un joueur
               </option>
-              {JOUEURS_FIXES.map((j) => (
-                <option key={j.id} value={j.pseudo} style={{ background: "#141414", color: "#fff" }}>
-                  {j.pseudo} — {j.zone} ({j.niveau})
+              {profilsGlobaux.map((p) => (
+                <option key={p.pseudo} value={p.pseudo} style={{ background: "#141414", color: "#fff" }}>
+                  {p.pseudo} — {p.zone} ({p.niveau})
                 </option>
               ))}
             </select>
@@ -888,9 +885,9 @@ export default function PartiesPage() {
                     <div style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>🌍 Candidats proposés</div>
 
                     <div style={{ display: "grid", gap: 8 }}>
-                      {getCandidats(p.zone, blocks).map((j) => (
+                      {getCandidats(p.zone, blocks, profilsGlobaux).map((j) => (
                         <div
-                          key={j.id}
+                          key={j.pseudo}
                           style={{
                             background: "#1f1f1f",
                             border: "1px solid #2a2a2a",

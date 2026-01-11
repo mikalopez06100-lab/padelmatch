@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import type { Profil as ProfilType, Zone, Niveau } from "@/lib/types";
+import { addOrUpdateProfilGlobal } from "@/lib/data/profils-globaux";
 
 const PROFIL_KEY = "padelmatch_profil_v1";
 const BLOCKS_KEY = "padelmatch_blocks_v1";
@@ -23,6 +24,8 @@ function loadProfil(): ProfilType | null {
 
 function saveProfil(p: ProfilType) {
   localStorage.setItem(PROFIL_KEY, JSON.stringify(p));
+  // Ajouter/mettre à jour dans la liste globale des profils
+  addOrUpdateProfilGlobal(p);
 }
 
 function loadBlocks(): string[] {

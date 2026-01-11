@@ -1,23 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type Joueur = {
-  id: string;
-  pseudo: string;
-  zone: string;
-  niveau: "Débutant" | "Intermédiaire" | "Confirmé" | "Compétitif";
-  friendlyScore: number;
-};
-
-const JOUEURS_FIXES: Joueur[] = [
-  { id: "j1", pseudo: "Max", zone: "Nice", niveau: "Intermédiaire", friendlyScore: 82 },
-  { id: "j2", pseudo: "Sarah", zone: "Antibes", niveau: "Confirmé", friendlyScore: 90 },
-  { id: "j3", pseudo: "Nico", zone: "Nice", niveau: "Débutant", friendlyScore: 75 },
-  { id: "j4", pseudo: "Leïla", zone: "Cagnes-sur-Mer", niveau: "Intermédiaire", friendlyScore: 88 },
-  { id: "j5", pseudo: "Tom", zone: "Monaco", niveau: "Compétitif", friendlyScore: 79 },
-  { id: "j6", pseudo: "Inès", zone: "Nice", niveau: "Confirmé", friendlyScore: 92 },
-];
+import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
+import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 
 type Groupe = {
   id: string;
@@ -55,9 +40,11 @@ export default function GroupesPage() {
   const [zone, setZone] = useState("Nice");
   const [membresSelectionnes, setMembresSelectionnes] = useState<string[]>([]);
   const [editingGroupeId, setEditingGroupeId] = useState<string | null>(null);
+  const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
 
   useEffect(() => {
     setGroupes(loadGroupes());
+    setProfilsGlobaux(loadProfilsGlobaux());
   }, []);
 
   function createGroupe() {
@@ -109,9 +96,13 @@ export default function GroupesPage() {
     updateGroupeMembres(groupeId, nouveauxMembres);
   }
 
-  const joueursDisponibles = JOUEURS_FIXES.filter(
-    (j) => !membresSelectionnes.includes(j.pseudo) || editingGroupeId !== null
-  );
+  // Recharger les profils globaux périodiquement pour avoir les dernières mises à jour
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProfilsGlobaux(loadProfilsGlobaux());
+    }, 2000); // Recharger toutes les 2 secondes
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "20px", paddingBottom: 80 }}>
@@ -186,37 +177,43 @@ export default function GroupesPage() {
               gap: 8,
             }}
           >
-            {JOUEURS_FIXES.map((j) => (
-              <label
-                key={j.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  cursor: "pointer",
-                  padding: 8,
-                  borderRadius: 8,
-                  background: membresSelectionnes.includes(j.pseudo) ? "#1f1f1f" : "transparent",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={membresSelectionnes.includes(j.pseudo)}
-                  onChange={() => toggleMembre(j.pseudo)}
+            {profilsGlobaux.length === 0 ? (
+              <div style={{ fontSize: 13, opacity: 0.6, color: "#fff", textAlign: "center", padding: 12 }}>
+                Aucun profil disponible. Créez des profils via l'inscription pour les voir ici.
+              </div>
+            ) : (
+              profilsGlobaux.map((p) => (
+                <label
+                  key={p.pseudo}
                   style={{
-                    width: 18,
-                    height: 18,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
                     cursor: "pointer",
+                    padding: 8,
+                    borderRadius: 8,
+                    background: membresSelectionnes.includes(p.pseudo) ? "#1f1f1f" : "transparent",
                   }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 500, color: "#fff", fontSize: 14 }}>{j.pseudo}</div>
-                  <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
-                    {j.zone} • {j.niveau}
+                >
+                  <input
+                    type="checkbox"
+                    checked={membresSelectionnes.includes(p.pseudo)}
+                    onChange={() => toggleMembre(p.pseudo)}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      cursor: "pointer",
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 500, color: "#fff", fontSize: 14 }}>{p.pseudo}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
+                      {p.zone} • {p.niveau}
+                    </div>
                   </div>
-                </div>
-              </label>
-            ))}
+                </label>
+              ))
+            )}
           </div>
           {membresSelectionnes.length > 0 && (
             <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
@@ -342,37 +339,43 @@ export default function GroupesPage() {
                     <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 4 }}>
                       Sélectionner les membres :
                     </div>
-                    {JOUEURS_FIXES.map((j) => (
-                      <label
-                        key={j.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          cursor: "pointer",
-                          padding: 8,
-                          borderRadius: 8,
-                          background: g.membres.includes(j.pseudo) ? "#1f1f1f" : "transparent",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={g.membres.includes(j.pseudo)}
-                          onChange={() => toggleMembreEdit(g.id, j.pseudo, g.membres)}
+                    {profilsGlobaux.length === 0 ? (
+                      <div style={{ fontSize: 13, opacity: 0.6, color: "#fff", textAlign: "center", padding: 12 }}>
+                        Aucun profil disponible.
+                      </div>
+                    ) : (
+                      profilsGlobaux.map((p) => (
+                        <label
+                          key={p.pseudo}
                           style={{
-                            width: 18,
-                            height: 18,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
                             cursor: "pointer",
+                            padding: 8,
+                            borderRadius: 8,
+                            background: g.membres.includes(p.pseudo) ? "#1f1f1f" : "transparent",
                           }}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, color: "#fff", fontSize: 14 }}>{j.pseudo}</div>
-                          <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
-                            {j.zone} • {j.niveau}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={g.membres.includes(p.pseudo)}
+                            onChange={() => toggleMembreEdit(g.id, p.pseudo, g.membres)}
+                            style={{
+                              width: 18,
+                              height: 18,
+                              cursor: "pointer",
+                            }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 500, color: "#fff", fontSize: 14 }}>{p.pseudo}</div>
+                            <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
+                              {p.zone} • {p.niveau}
+                            </div>
                           </div>
-                        </div>
-                      </label>
-                    ))}
+                        </label>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
