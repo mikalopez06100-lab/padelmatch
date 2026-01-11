@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import type { Profil as ProfilType, Zone, Niveau } from "@/lib/types";
+import type { Profil as ProfilType, Niveau } from "@/lib/types";
 import { updateProfil } from "@/lib/data/auth";
+import { loadTerrains, getTerrainById, type Terrain } from "@/lib/data/terrains";
 
 const PROFIL_KEY = "padelmatch_profil_v1";
 const BLOCKS_KEY = "padelmatch_blocks_v1";
 
-const ZONES: Zone[] = ["Nice", "Antibes", "Cagnes-sur-Mer", "Cannes", "Monaco", "Menton", "Autre"];
 const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
 
 function loadProfil(): ProfilType | null {

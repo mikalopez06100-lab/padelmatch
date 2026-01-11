@@ -19,7 +19,8 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pseudo, setPseudo] = useState("");
-  const [zone, setZone] = useState<Zone>("Nice");
+  const [terrains, setTerrains] = useState<Terrain[]>([]);
+  const [terrainId, setTerrainId] = useState<string>("");
   const [niveau, setNiveau] = useState<Niveau>("Débutant");
 
   useEffect(() => {
