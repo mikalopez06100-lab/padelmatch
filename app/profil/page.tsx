@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import type { Profil as ProfilType, Zone, Niveau } from "@/lib/types";
-import { addOrUpdateProfilGlobal } from "@/lib/data/profils-globaux";
+import { updateProfil } from "@/lib/data/auth";
 
 const PROFIL_KEY = "padelmatch_profil_v1";
 const BLOCKS_KEY = "padelmatch_blocks_v1";
@@ -24,8 +24,8 @@ function loadProfil(): ProfilType | null {
 
 function saveProfil(p: ProfilType) {
   localStorage.setItem(PROFIL_KEY, JSON.stringify(p));
-  // Ajouter/mettre à jour dans la liste globale des profils
-  addOrUpdateProfilGlobal(p);
+  // Mettre à jour dans la liste globale des profils (avec gestion du passwordHash)
+  updateProfil(p);
 }
 
 function loadBlocks(): string[] {
@@ -121,8 +121,14 @@ export default function ProfilPage() {
       return;
     }
 
+    if (!saved?.email) {
+      alert("Erreur : Email manquant. Veuillez vous reconnecter.");
+      return;
+    }
+
     const profil: ProfilType = {
       pseudo: clean,
+      email: saved.email,
       zone,
       niveau,
       friendlyScore: saved?.friendlyScore ?? 50,

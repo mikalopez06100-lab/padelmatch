@@ -1,0 +1,66 @@
+═══════════════════════════════════════════════════════
+  GUIDE ULTRA SIMPLE - Mettre PadelMatch en ligne
+═══════════════════════════════════════════════════════
+
+🎯 OBJECTIF : Mettre votre application sur Internet
+
+📋 IL FAUT FAIRE 3 CHOSES :
+   1. Sauvegarder votre code dans Git (fait automatiquement)
+   2. Le mettre sur GitHub (comme Dropbox pour le code)
+   3. Le déployer sur Vercel (le rendre accessible sur Internet)
+
+═══════════════════════════════════════════════════════
+  ÉTAPE 1 : Créer le "commit" (sauvegarde)
+═══════════════════════════════════════════════════════
+
+C'est comme faire une sauvegarde de votre code.
+
+👉 ACTION : Dites-moi simplement "OK pour l'étape 1" 
+   et je le ferai pour vous automatiquement !
+
+OU si vous préférez le faire vous-même :
+
+1. Ouvrez PowerShell (touche Windows, tapez "PowerShell", Entrée)
+2. Tapez cette ligne exactement :
+
+   cd "C:\Users\ppmpc\Documents\padelmatch"
+
+3. Appuyez sur Entrée
+4. Tapez cette ligne :
+
+   git commit -m "Initial commit"
+
+5. Appuyez sur Entrée
+
+═══════════════════════════════════════════════════════
+  ÉTAPE 2 : Créer un compte GitHub
+═══════════════════════════════════════════════════════
+
+GitHub, c'est comme Google Drive mais pour le code.
+
+👉 ACTION : 
+   1. Allez sur https://github.com/signup
+   2. Créez un compte (c'est gratuit)
+   3. Dites-moi quand c'est fait
+
+═══════════════════════════════════════════════════════
+  ÉTAPE 3 : Mettre le code sur GitHub
+═══════════════════════════════════════════════════════
+
+👉 ACTION : Je vous donnerai les instructions quand 
+   vous aurez créé votre compte GitHub
+
+═══════════════════════════════════════════════════════
+  ÉTAPE 4 : Déployer sur Vercel
+═══════════════════════════════════════════════════════
+
+👉 ACTION : Je vous guiderai étape par étape
+
+═══════════════════════════════════════════════════════
+
+❓ VOUS NE COMPRENEZ PAS QUELQUE CHOSE ?
+
+   Dites-moi simplement ce qui n'est pas clair, 
+   je reformulerai différemment !
+
+═══════════════════════════════════════════════════════

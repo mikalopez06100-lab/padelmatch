@@ -1,12 +1,12 @@
 // Data Access Layer pour les Profils Globaux
 // Stocke tous les profils créés dans l'application (pour MVP avec localStorage)
 
-import type { Profil } from "../types";
+import type { ProfilComplet } from "../types";
 import { STORAGE_KEYS, loadFromStorage, saveToStorage } from "./storage";
 
 const PROFILS_GLOBAUX_KEY = "padelmatch_profils_globaux_v1";
 
-export interface ProfilGlobal extends Profil {
+export interface ProfilGlobal extends ProfilComplet {
   createdAt: number;
   updatedAt: number;
 }
@@ -33,7 +33,7 @@ export function saveProfilsGlobaux(profils: ProfilGlobal[]): void {
 /**
  * Ajoute ou met à jour un profil dans la liste globale
  */
-export function addOrUpdateProfilGlobal(profil: Profil): void {
+export function addOrUpdateProfilGlobal(profil: ProfilComplet): void {
   const profils = loadProfilsGlobaux();
   const existingIndex = profils.findIndex((p) => p.pseudo.toLowerCase() === profil.pseudo.toLowerCase());
 
@@ -63,6 +63,14 @@ export function addOrUpdateProfilGlobal(profil: Profil): void {
 export function getProfilGlobalByPseudo(pseudo: string): ProfilGlobal | null {
   const profils = loadProfilsGlobaux();
   return profils.find((p) => p.pseudo.toLowerCase() === pseudo.toLowerCase()) || null;
+}
+
+/**
+ * Récupère un profil global par email
+ */
+export function getProfilGlobalByEmail(email: string): ProfilGlobal | null {
+  const profils = loadProfilsGlobaux();
+  return profils.find((p) => p.email?.toLowerCase() === email.toLowerCase()) || null;
 }
 
 /**

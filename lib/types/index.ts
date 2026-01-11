@@ -63,14 +63,28 @@ export interface Groupe {
   // TODO: Migration backend - ajouter userId: string, updatedAt: number
 }
 
-export interface Profil {
+// Profil complet avec mot de passe hashé (pour stockage global uniquement)
+export interface ProfilComplet {
   pseudo: string;
+  email: string;
+  passwordHash: string; // Hash du mot de passe (ne jamais stocker en clair)
   zone: Zone;
   niveau: Niveau;
   friendlyScore: number; // 0-100
   xp: number; // points
   photoUrl?: string; // base64 image URL
-  // TODO: Migration backend - ajouter userId: string, email?: string, updatedAt: number
+}
+
+// Profil utilisateur (sans passwordHash - pour localStorage local)
+export interface Profil {
+  pseudo: string;
+  email: string;
+  zone: Zone;
+  niveau: Niveau;
+  friendlyScore: number; // 0-100
+  xp: number; // points
+  photoUrl?: string; // base64 image URL
+  // TODO: Migration backend - ajouter userId: string, updatedAt: number
 }
 
 export interface Message {
@@ -121,12 +135,13 @@ export interface GroupeDocument {
 export interface ProfilDocument {
   userId: string;
   pseudo: string;
+  email: string;
+  passwordHash: string;
   zone: Zone;
   niveau: Niveau;
   friendlyScore: number;
   xp: number;
   photoUrl?: string; // URL de l'image (Firebase Storage ou base64 en MVP)
-  email?: string;
   createdAt: number;
   updatedAt: number;
 }

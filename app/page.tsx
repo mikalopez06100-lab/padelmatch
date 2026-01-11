@@ -2,42 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Profil, Zone, Niveau } from "@/lib/types";
-import { addOrUpdateProfilGlobal } from "@/lib/data/profils-globaux";
-
-const PROFIL_KEY = "padelmatch_profil_v1";
+import type { Zone, Niveau } from "@/lib/types";
+import { authenticate, createProfil, emailExists, loadCurrentProfil } from "@/lib/data/auth";
 
 const ZONES: Zone[] = ["Nice", "Antibes", "Cagnes-sur-Mer", "Cannes", "Monaco", "Menton", "Autre"];
 const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
 
-function loadProfil(): Profil | null {
-  try {
-    const raw = localStorage.getItem(PROFIL_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.pseudo) return null;
-    return parsed as Profil;
-  } catch {
-    return null;
-  }
-}
-
-function saveProfil(p: Profil) {
-  localStorage.setItem(PROFIL_KEY, JSON.stringify(p));
-  // Ajouter/mettre à jour dans la liste globale des profils
-  addOrUpdateProfilGlobal(p);
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export default function Home() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "inscription">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [pseudo, setPseudo] = useState("");
   const [zone, setZone] = useState<Zone>("Nice");
   const [niveau, setNiveau] = useState<Niveau>("Débutant");
 
   useEffect(() => {
     // Si un profil existe déjà, rediriger vers les parties
-    const existing = loadProfil();
+    const existing = loadCurrentProfil();
     if (existing) {
       router.push("/parties");
     }
@@ -46,41 +32,59 @@ export default function Home() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const clean = pseudo.trim();
-    if (clean.length < 2) {
-      alert("Pseudo trop court (min 2 caractères).");
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+    const cleanPseudo = pseudo.trim();
+
+    // Validation email
+    if (!isValidEmail(cleanEmail)) {
+      alert("Veuillez entrer une adresse email valide.");
       return;
     }
 
     if (mode === "login") {
-      // Login : vérifier si le pseudo existe
-      const existing = loadProfil();
-      if (existing && existing.pseudo.toLowerCase() === clean.toLowerCase()) {
-        // Le profil existe, on le charge (déjà chargé en localStorage)
+      // Login : authentifier avec email/mot de passe
+      const profil = authenticate(cleanEmail, cleanPassword);
+      if (profil) {
         router.push("/parties");
+        router.refresh();
       } else {
-        alert("Pseudo non trouvé. Vérifiez votre pseudo ou créez un compte.");
-        setMode("inscription");
+        alert("Email ou mot de passe incorrect.");
       }
     } else {
       // Inscription : créer un nouveau profil
-      const existing = loadProfil();
-      if (existing) {
-        alert("Un profil existe déjà. Veuillez vous connecter.");
+      if (cleanPseudo.length < 2) {
+        alert("Pseudo trop court (min 2 caractères).");
+        return;
+      }
+
+      if (cleanPassword.length < 6) {
+        alert("Le mot de passe doit contenir au moins 6 caractères.");
+        return;
+      }
+
+      // Vérifier si l'email existe déjà
+      if (emailExists(cleanEmail)) {
+        alert("Cet email est déjà utilisé. Connectez-vous ou utilisez un autre email.");
         setMode("login");
         return;
       }
 
-      const profil: Profil = {
-        pseudo: clean,
-        zone,
-        niveau,
-        friendlyScore: 50,
-        xp: 0,
-      };
-
-      saveProfil(profil);
-      router.push("/parties");
+      try {
+        createProfil({
+          pseudo: cleanPseudo,
+          email: cleanEmail,
+          password: cleanPassword,
+          zone,
+          niveau,
+        });
+        alert("Inscription réussie ✅\nBienvenue sur PadelMatch !");
+        router.push("/parties");
+        router.refresh();
+      } catch (error) {
+        alert("Erreur lors de l'inscription. Veuillez réessayer.");
+        console.error(error);
+      }
     }
   }
 
@@ -157,16 +161,38 @@ export default function Home() {
           >
             <div style={{ display: "grid", gap: 8 }}>
               <label style={{ fontSize: 13, opacity: 0.7, color: "#fff", fontWeight: 500 }}>
-                Pseudo <span style={{ color: "#ef4444" }}>*</span>
+                Email <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <input
-                type="text"
-                value={pseudo}
-                onChange={(e) => setPseudo(e.target.value)}
-                placeholder="Ex : Mickaël"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="exemple@email.com"
                 required
-                minLength={2}
                 autoFocus
+                style={{
+                  padding: 14,
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "#141414",
+                  color: "#fff",
+                  fontSize: 15,
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gap: 8 }}>
+              <label style={{ fontSize: 13, opacity: 0.7, color: "#fff", fontWeight: 500 }}>
+                Mot de passe <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === "login" ? "Votre mot de passe" : "Minimum 6 caractères"}
+                required
+                minLength={mode === "inscription" ? 6 : undefined}
                 style={{
                   padding: 14,
                   borderRadius: 10,
@@ -181,6 +207,29 @@ export default function Home() {
 
             {mode === "inscription" && (
               <>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <label style={{ fontSize: 13, opacity: 0.7, color: "#fff", fontWeight: 500 }}>
+                    Pseudo <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={pseudo}
+                    onChange={(e) => setPseudo(e.target.value)}
+                    placeholder="Ex : Mickaël"
+                    required
+                    minLength={2}
+                    style={{
+                      padding: 14,
+                      borderRadius: 10,
+                      border: "1px solid #2a2a2a",
+                      background: "#141414",
+                      color: "#fff",
+                      fontSize: 15,
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
                 <div style={{ display: "grid", gap: 8 }}>
                   <label style={{ fontSize: 13, opacity: 0.7, color: "#fff", fontWeight: 500 }}>
                     Zone <span style={{ color: "#ef4444" }}>*</span>
