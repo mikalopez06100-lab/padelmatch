@@ -30,7 +30,7 @@ export default function RootLayout({
             background: "#000",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-around",
+            justifyContent: "space-evenly",
             zIndex: 100,
           }}
         >
