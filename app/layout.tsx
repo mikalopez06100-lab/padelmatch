@@ -1,0 +1,77 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import "./globals.css";
+import { PWARegister } from "./pwa-register";
+
+export const metadata: Metadata = {
+  title: "PadelMatch",
+  description: "Nice & alentours",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="fr">
+      <body style={{ margin: 0, fontFamily: "system-ui", background: "#000" }}>
+        <PWARegister />
+        <div style={{ paddingBottom: 72 }}>{children}</div>
+
+        <nav
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 64,
+            borderTop: "1px solid #1f1f1f",
+            background: "#000",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-around",
+            zIndex: 100,
+          }}
+        >
+          <Link
+            href="/parties"
+            style={{
+              color: "#fff",
+              textDecoration: "none",
+              fontSize: 14,
+              padding: "8px 12px",
+              borderRadius: 8,
+            }}
+          >
+            🎾 Parties
+          </Link>
+          <Link
+            href="/groupes"
+            style={{
+              color: "#fff",
+              textDecoration: "none",
+              fontSize: 14,
+              padding: "8px 12px",
+              borderRadius: 8,
+            }}
+          >
+            👥 Groupes
+          </Link>
+          <Link
+            href="/profil"
+            style={{
+              color: "#fff",
+              textDecoration: "none",
+              fontSize: 14,
+              padding: "8px 12px",
+              borderRadius: 8,
+            }}
+          >
+            🙂 Profil
+          </Link>
+        </nav>
+      </body>
+    </html>
+  );
+}
