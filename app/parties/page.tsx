@@ -103,10 +103,8 @@ function removeBlock(pseudo: string) {
   saveBlocks(blocks.filter((p) => p !== pseudo));
 }
 
-function getCandidats(zone: string, blocks: string[], profilsGlobaux: ProfilGlobal[]): ProfilGlobal[] {
-  const candidats = profilsGlobaux.filter(
-    (p) => (p.zone === zone || p.zone === "Nice") && !blocks.includes(p.pseudo)
-  );
+function getCandidats(blocks: string[], profilsGlobaux: ProfilGlobal[]): ProfilGlobal[] {
+  const candidats = profilsGlobaux.filter((p) => !blocks.includes(p.pseudo));
   candidats.sort((a, b) => b.friendlyScore - a.friendlyScore);
   return candidats.slice(0, 4);
 }
