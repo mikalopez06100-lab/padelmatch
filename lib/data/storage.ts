@@ -9,6 +9,8 @@ export const STORAGE_KEYS = {
   profil: `padelmatch_profil_${STORAGE_VERSION}`,
   blocks: `padelmatch_blocks_${STORAGE_VERSION}`,
   messages: `padelmatch_messages_${STORAGE_VERSION}`,
+  profilsGlobaux: `padelmatch_profils_globaux_${STORAGE_VERSION}`,
+  terrainsPersonnalises: `padelmatch_terrains_personnalises_${STORAGE_VERSION}`,
 } as const;
 
 // Fonctions génériques de stockage local
