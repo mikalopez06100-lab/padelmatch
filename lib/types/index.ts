@@ -68,7 +68,6 @@ export interface ProfilComplet {
   pseudo: string;
   email: string;
   passwordHash: string; // Hash du mot de passe (ne jamais stocker en clair)
-  zone: Zone;
   niveau: Niveau;
   friendlyScore: number; // 0-100
   xp: number; // points
@@ -79,7 +78,6 @@ export interface ProfilComplet {
 export interface Profil {
   pseudo: string;
   email: string;
-  zone: Zone;
   niveau: Niveau;
   friendlyScore: number; // 0-100
   xp: number; // points

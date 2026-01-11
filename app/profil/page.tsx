@@ -128,7 +128,6 @@ export default function ProfilPage() {
     const profil: ProfilType = {
       pseudo: clean,
       email: saved.email,
-      zone,
       niveau,
       friendlyScore: saved?.friendlyScore ?? 50,
       xp: saved?.xp ?? 0,
@@ -143,7 +142,6 @@ export default function ProfilPage() {
   function onReset() {
     localStorage.removeItem(PROFIL_KEY);
     setPseudo("");
-    setZone("Nice");
     setNiveau("Débutant");
     setPhotoUrl(undefined);
     setSaved(null);
