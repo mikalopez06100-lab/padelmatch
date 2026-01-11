@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import { PWARegister } from "./pwa-register";
 import { AuthButton } from "./auth-button";
+import { Header } from "./header";
 
 export const metadata: Metadata = {
   title: "PadelMatch",
@@ -18,7 +19,8 @@ export default function RootLayout({
     <html lang="fr">
       <body style={{ margin: 0, fontFamily: "system-ui", background: "#000" }}>
         <PWARegister />
-        <div style={{ paddingBottom: 72 }}>{children}</div>
+        <Header />
+        <div style={{ paddingTop: 56, paddingBottom: 72 }}>{children}</div>
 
         <nav
           style={{
@@ -84,7 +86,6 @@ export default function RootLayout({
           >
             🙂 Profil
           </Link>
-          <AuthButton />
         </nav>
       </body>
     </html>

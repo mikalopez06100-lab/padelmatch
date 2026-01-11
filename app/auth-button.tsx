@@ -46,24 +46,26 @@ export function AuthButton() {
     router.push("/");
   }
 
-  // Ne pas afficher sur la page d'accueil
-  if (pathname === "/") {
-    return null;
-  }
-
   if (isLoggedIn) {
     return (
       <button
         onClick={handleLogout}
         style={{
-          padding: "8px 12px",
+          padding: "8px 16px",
           borderRadius: 8,
           border: "1px solid #2a2a2a",
           background: "transparent",
           color: "#ef4444",
-          fontSize: 13,
+          fontSize: 14,
           cursor: "pointer",
           fontWeight: 500,
+          transition: "background 0.2s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "#1f1f1f";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "transparent";
         }}
       >
         🚪 Logout
@@ -75,14 +77,21 @@ export function AuthButton() {
     <button
       onClick={handleLogin}
       style={{
-        padding: "8px 12px",
+        padding: "8px 16px",
         borderRadius: 8,
         border: "1px solid #2a2a2a",
         background: "transparent",
         color: "#10b981",
-        fontSize: 13,
+        fontSize: 14,
         cursor: "pointer",
         fontWeight: 500,
+        transition: "background 0.2s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "#1f1f1f";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
       }}
     >
       🔑 Login
