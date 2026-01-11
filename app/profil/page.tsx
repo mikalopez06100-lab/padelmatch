@@ -81,7 +81,6 @@ export default function ProfilPage() {
     const existing = loadProfil();
     if (existing) {
       setPseudo(existing.pseudo);
-      setZone(existing.zone);
       setNiveau(existing.niveau);
       setPhotoUrl(existing.photoUrl);
       setSaved(existing);
