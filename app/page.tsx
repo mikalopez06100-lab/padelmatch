@@ -241,11 +241,11 @@ export default function Home() {
 
                 <div style={{ display: "grid", gap: 8 }}>
                   <label style={{ fontSize: 13, opacity: 0.7, color: "#fff", fontWeight: 500 }}>
-                    Zone <span style={{ color: "#ef4444" }}>*</span>
+                    Terrain préféré <span style={{ color: "#ef4444" }}>*</span>
                   </label>
                   <select
-                    value={zone}
-                    onChange={(e) => setZone(e.target.value as Zone)}
+                    value={terrainId}
+                    onChange={(e) => setTerrainId(e.target.value)}
                     required
                     style={{
                       padding: 14,
@@ -258,9 +258,9 @@ export default function Home() {
                       cursor: "pointer",
                     }}
                   >
-                    {ZONES.map((z) => (
-                      <option key={z} value={z} style={{ background: "#141414", color: "#fff" }}>
-                        {z}
+                    {terrains.map((t) => (
+                      <option key={t.id} value={t.id} style={{ background: "#141414", color: "#fff" }}>
+                        {t.nom} ({t.ville})
                       </option>
                     ))}
                   </select>
