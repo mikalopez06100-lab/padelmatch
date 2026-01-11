@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Profil, Zone, Niveau } from "@/lib/types";
+import { addOrUpdateProfilGlobal } from "@/lib/data/profils-globaux";
 
 const PROFIL_KEY = "padelmatch_profil_v1";
 
@@ -23,6 +24,8 @@ function loadProfil(): Profil | null {
 
 function saveProfil(p: Profil) {
   localStorage.setItem(PROFIL_KEY, JSON.stringify(p));
+  // Ajouter/mettre à jour dans la liste globale des profils
+  addOrUpdateProfilGlobal(p);
 }
 
 function getInitials(pseudo: string): string {
