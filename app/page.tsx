@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Zone, Niveau } from "@/lib/types";
+import type { Niveau } from "@/lib/types";
 import { authenticate, createProfil, emailExists, loadCurrentProfil } from "@/lib/data/auth";
+import { loadTerrains, type Terrain } from "@/lib/data/terrains";
 import { Logo } from "./logo";
 
-const ZONES: Zone[] = ["Nice", "Antibes", "Cagnes-sur-Mer", "Cannes", "Monaco", "Menton", "Autre"];
 const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
 
 function isValidEmail(email: string): boolean {
