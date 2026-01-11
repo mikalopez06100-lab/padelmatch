@@ -40,7 +40,6 @@ const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compéti
 export default function JoueursPage() {
   const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterZone, setFilterZone] = useState<Zone | "">("");
   const [filterNiveau, setFilterNiveau] = useState<Niveau | "">("");
 
   useEffect(() => {
