@@ -369,9 +369,9 @@ export default function GroupesPage() {
                           />
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 500, color: "#fff", fontSize: 14 }}>{p.pseudo}</div>
-                            <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
-                              {p.zone} • {p.niveau}
-                            </div>
+                             <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
+                               {p.niveau}
+                             </div>
                           </div>
                         </label>
                       ))
