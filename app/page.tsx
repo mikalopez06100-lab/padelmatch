@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Niveau } from "@/lib/types";
 import { authenticate, createProfil, emailExists, loadCurrentProfil } from "@/lib/data/auth";
-import { loadTerrains, type Terrain } from "@/lib/data/terrains";
 import { Logo } from "./logo";
 
 const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
@@ -19,8 +18,6 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pseudo, setPseudo] = useState("");
-  const [terrains, setTerrains] = useState<Terrain[]>([]);
-  const [terrainId, setTerrainId] = useState<string>("");
   const [niveau, setNiveau] = useState<Niveau>("Débutant");
 
   useEffect(() => {

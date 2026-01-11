@@ -137,7 +137,6 @@ export interface ProfilDocument {
   pseudo: string;
   email: string;
   passwordHash: string;
-  terrainId: string; // ID du terrain préféré
   niveau: Niveau;
   friendlyScore: number;
   xp: number;

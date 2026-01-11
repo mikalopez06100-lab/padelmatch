@@ -32,7 +32,6 @@ export function createProfil(data: {
   pseudo: string;
   email: string;
   password: string;
-  terrainId: string;
   niveau: string;
   photoUrl?: string;
 }): Profil {
@@ -42,7 +41,6 @@ export function createProfil(data: {
     pseudo: data.pseudo,
     email: data.email,
     passwordHash,
-    terrainId: data.terrainId,
     niveau: data.niveau as any,
     friendlyScore: 50,
     xp: 0,
