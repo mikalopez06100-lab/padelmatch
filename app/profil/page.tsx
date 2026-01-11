@@ -70,7 +70,6 @@ function getAvatarColor(pseudo: string): string {
 
 export default function ProfilPage() {
   const [pseudo, setPseudo] = useState("");
-  const [zone, setZone] = useState<Zone>("Nice");
   const [niveau, setNiveau] = useState<Niveau>("Débutant");
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [saved, setSaved] = useState<ProfilType | null>(null);
@@ -344,7 +343,6 @@ export default function ProfilPage() {
             </div>
             <div style={{ opacity: 0.9, color: "#fff", display: "grid", gap: 4, fontSize: 14 }}>
               <div style={{ fontWeight: 600 }}>👤 {saved.pseudo}</div>
-              <div>📍 {saved.zone}</div>
               <div>🎚️ {saved.niveau}</div>
             </div>
           </div>
