@@ -901,7 +901,7 @@ export default function PartiesPage() {
                           <div style={{ flex: 1, minWidth: 150 }}>
                             <div style={{ fontWeight: 600, color: "#fff", fontSize: 14, marginBottom: 4 }}>{j.pseudo}</div>
                             <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
-                              {j.zone} • {j.niveau} • Friendly {j.friendlyScore}
+                               {j.niveau} • Friendly {j.friendlyScore}
                             </div>
                           </div>
 
