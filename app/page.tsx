@@ -94,9 +94,9 @@ export default function Home() {
       <div style={{ maxWidth: 450, width: "100%", paddingTop: 40 }}>
         {/* Logo et titre */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <h1 style={{ fontSize: 40, marginBottom: 12, color: "#fff", fontWeight: 700, letterSpacing: -0.5 }}>
-            🎾 PadelMatch
-          </h1>
+          <div style={{ marginBottom: 16 }}>
+            <Logo size="large" showTagline />
+          </div>
           <p style={{ fontSize: 16, opacity: 0.8, color: "#fff", margin: 0 }}>
             Nice & alentours — Trouve des joueurs et complète tes parties en 2 clics.
           </p>
