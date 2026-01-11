@@ -24,12 +24,19 @@ export default function Home() {
   const [niveau, setNiveau] = useState<Niveau>("Débutant");
 
   useEffect(() => {
+    // Charger les terrains
+    const terrainsList = loadTerrains();
+    setTerrains(terrainsList);
+    if (terrainsList.length > 0 && !terrainId) {
+      setTerrainId(terrainsList[0].id);
+    }
+    
     // Si un profil existe déjà, rediriger vers les parties
     const existing = loadCurrentProfil();
     if (existing) {
       router.push("/parties");
     }
-  }, [router]);
+  }, [router, terrainId]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,7 +84,7 @@ export default function Home() {
           pseudo: cleanPseudo,
           email: cleanEmail,
           password: cleanPassword,
-          zone,
+          terrainId,
           niveau,
         });
         alert("Inscription réussie ✅\nBienvenue sur PadelMatch !");
