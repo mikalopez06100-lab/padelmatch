@@ -59,6 +59,18 @@ export default function RootLayout({
             👥 Groupes
           </Link>
           <Link
+            href="/joueurs"
+            style={{
+              color: "#fff",
+              textDecoration: "none",
+              fontSize: 14,
+              padding: "8px 12px",
+              borderRadius: 8,
+            }}
+          >
+            🎯 Joueurs
+          </Link>
+          <Link
             href="/profil"
             style={{
               color: "#fff",
