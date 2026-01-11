@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { PWARegister } from "./pwa-register";
+import { AuthButton } from "./auth-button";
 
 export const metadata: Metadata = {
   title: "PadelMatch",
