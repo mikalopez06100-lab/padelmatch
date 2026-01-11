@@ -637,7 +637,7 @@ export default function PartiesPage() {
               </option>
               {profilsGlobaux.map((p) => (
                 <option key={p.pseudo} value={p.pseudo} style={{ background: "#141414", color: "#fff" }}>
-                  {p.pseudo} — {p.zone} ({p.niveau})
+                   {p.pseudo} ({p.niveau})
                 </option>
               ))}
             </select>
