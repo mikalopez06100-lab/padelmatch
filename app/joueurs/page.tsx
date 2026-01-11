@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
-import type { Zone, Niveau } from "@/lib/types";
+import type { Niveau } from "@/lib/types";
 
 function getInitials(pseudo: string): string {
   return pseudo
@@ -34,7 +34,6 @@ function getAvatarColor(pseudo: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-const ZONES: Zone[] = ["Nice", "Antibes", "Cagnes-sur-Mer", "Cannes", "Monaco", "Menton", "Autre"];
 const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
 
 export default function JoueursPage() {
@@ -61,11 +60,6 @@ export default function JoueursPage() {
         return false;
       }
 
-      // Filtre par zone
-      if (filterZone && p.zone !== filterZone) {
-        return false;
-      }
-
       // Filtre par niveau
       if (filterNiveau && p.niveau !== filterNiveau) {
         return false;
@@ -73,7 +67,7 @@ export default function JoueursPage() {
 
       return true;
     });
-  }, [profilsGlobaux, searchTerm, filterZone, filterNiveau]);
+  }, [profilsGlobaux, searchTerm, filterNiveau]);
 
   return (
     <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "20px", paddingBottom: 80 }}>
@@ -113,30 +107,6 @@ export default function JoueursPage() {
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <select
-            value={filterZone}
-            onChange={(e) => setFilterZone(e.target.value as Zone | "")}
-            style={{
-              flex: 1,
-              minWidth: 150,
-              padding: 12,
-              borderRadius: 10,
-              border: "1px solid #2a2a2a",
-              background: "#141414",
-              color: "#fff",
-              fontSize: 14,
-            }}
-          >
-            <option value="" style={{ background: "#141414", color: "#fff" }}>
-              Toutes les zones
-            </option>
-            {ZONES.map((z) => (
-              <option key={z} value={z} style={{ background: "#141414", color: "#fff" }}>
-                {z}
-              </option>
-            ))}
-          </select>
-
-          <select
             value={filterNiveau}
             onChange={(e) => setFilterNiveau(e.target.value as Niveau | "")}
             style={{
@@ -161,7 +131,7 @@ export default function JoueursPage() {
           </select>
         </div>
 
-        {(searchTerm || filterZone || filterNiveau) && (
+        {(searchTerm || filterNiveau) && (
           <div style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>
             {profilsFiltres.length} joueur{profilsFiltres.length > 1 ? "s" : ""} trouvé
             {profilsFiltres.length > 1 ? "s" : ""}
@@ -228,7 +198,7 @@ export default function JoueursPage() {
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontWeight: 600, color: "#fff", fontSize: 16, marginBottom: 4 }}>{p.pseudo}</div>
                 <div style={{ fontSize: 13, opacity: 0.8, color: "#fff", marginBottom: 4 }}>
-                  📍 {p.zone} • 🎾 {p.niveau}
+                  🎾 {p.niveau}
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.7, color: "#fff", display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <span>⭐ Friendly {p.friendlyScore}/100</span>
