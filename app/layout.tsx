@@ -35,16 +35,12 @@ export default function RootLayout({
             right: 0,
             bottom: 0,
             zIndex: 0,
-            backgroundImage: "url('https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
+            backgroundImage: "url('https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'), linear-gradient(135deg, #0a4a2e 0%, #062e1a 100%)",
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
             backgroundAttachment: "fixed",
             opacity: 0.2,
-          }}
-          onError={(e) => {
-            // Fallback si l'image ne charge pas
-            e.currentTarget.style.backgroundImage = "linear-gradient(135deg, #0a4a2e 0%, #062e1a 100%)";
           }}
         />
         {/* Overlay sombre pour la lisibilité */}
