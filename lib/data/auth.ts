@@ -20,8 +20,9 @@ export function authenticate(email: string, password: string): Profil | null {
     return null;
   }
 
-  // Retourner le profil sans le passwordHash
+  // Retourner le profil sans le passwordHash et le sauvegarder dans localStorage
   const { passwordHash, ...profil } = profilGlobal;
+  saveToStorage(STORAGE_KEYS.profil, profil);
   return profil;
 }
 
@@ -101,4 +102,42 @@ export function updateProfil(profil: Profil): void {
 
   // Mettre à jour dans la liste globale (avec passwordHash)
   addOrUpdateProfilGlobal(profilComplet);
+}
+
+/**
+ * Génère un nouveau mot de passe aléatoire
+ */
+export function generateNewPassword(): string {
+  const length = 12;
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return password;
+}
+
+/**
+ * Réinitialise le mot de passe d'un utilisateur par email
+ * Retourne le nouveau mot de passe généré, ou null si l'email n'existe pas
+ */
+export function resetPassword(email: string): string | null {
+  const profilGlobal = getProfilGlobalByEmail(email);
+  if (!profilGlobal) {
+    return null;
+  }
+
+  // Générer un nouveau mot de passe
+  const newPassword = generateNewPassword();
+  const passwordHash = hashPassword(newPassword);
+
+  // Mettre à jour le profil global avec le nouveau mot de passe
+  const profilComplet: ProfilComplet = {
+    ...profilGlobal,
+    passwordHash,
+  };
+
+  addOrUpdateProfilGlobal(profilComplet);
+
+  return newPassword;
 }

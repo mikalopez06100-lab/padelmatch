@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { formatDateLong, formatTimeShort } from "../../utils/date";
 
 type Participant = {
@@ -265,13 +266,17 @@ export default function MatchPage() {
 
   const monPseudo = getMonPseudo();
   const participant = partie.participants.find((p) => p.pseudo === monPseudo);
+  const inscrits = partie.participants.length;
+  const manque = Math.max(0, partie.placesTotal - inscrits);
+  const complete = manque === 0;
 
-  if (!participant) {
+  // Si la partie est complète, seuls les participants peuvent y accéder
+  if (complete && !participant) {
     return (
       <div style={{ padding: 24, background: "#000", minHeight: "100vh", color: "#fff" }}>
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>🔒 Accès refusé</h1>
         <p style={{ opacity: 0.7 }}>
-          Tu n'es pas participant à cette partie. Seuls les joueurs acceptés peuvent y accéder.
+          Cette partie est complète. Seuls les joueurs inscrits peuvent y accéder.
         </p>
         <button
           onClick={() => router.push("/parties")}
@@ -289,10 +294,6 @@ export default function MatchPage() {
       </div>
     );
   }
-
-  const inscrits = partie.participants.length;
-  const manque = Math.max(0, partie.placesTotal - inscrits);
-  const complete = manque === 0;
   const slotsLibres = Array(manque).fill(null);
   const hasDemande = partie.demandes.some((d) => d.pseudo === monPseudo);
 
@@ -406,7 +407,24 @@ export default function MatchPage() {
                 {getInitials(p.pseudo)}
               </div>
               <div style={{ fontSize: 12, textAlign: "center" }}>
-                <div style={{ fontWeight: 500 }}>{p.pseudo}</div>
+                <Link
+                  href={`/joueurs/${encodeURIComponent(p.pseudo)}`}
+                  style={{
+                    fontWeight: 500,
+                    color: "#10b981",
+                    textDecoration: "none",
+                    cursor: "pointer",
+                    display: "inline-block",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.textDecoration = "underline";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.textDecoration = "none";
+                  }}
+                >
+                  {p.pseudo}
+                </Link>
                 <div style={{ fontSize: 11, opacity: 0.7 }}>{niveauAffiche}</div>
               </div>
             </div>
@@ -523,7 +541,25 @@ export default function MatchPage() {
                   {getInitials(demande.pseudo)}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{demande.pseudo}</div>
+                  <Link
+                    href={`/joueurs/${encodeURIComponent(demande.pseudo)}`}
+                    style={{
+                      fontWeight: 600,
+                      marginBottom: 4,
+                      color: "#10b981",
+                      textDecoration: "none",
+                      cursor: "pointer",
+                      display: "inline-block",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.textDecoration = "underline";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.textDecoration = "none";
+                    }}
+                  >
+                    {demande.pseudo}
+                  </Link>
                   <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 4 }}>{niveauAffiche}</div>
                   <div style={{ fontSize: 13, opacity: 0.7 }}>Fiabilité: 👍👍👍</div>
                 </div>
@@ -548,9 +584,10 @@ export default function MatchPage() {
         </div>
       )}
 
-      {/* Chat */}
-      <div style={{ padding: "0 20px", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Chat du match</h2>
+      {/* Chat - uniquement pour les participants */}
+      {isParticipant && (
+        <div style={{ padding: "0 20px", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Chat du match</h2>
         <div
           style={{
             background: "#1f1f1f",
@@ -598,7 +635,22 @@ export default function MatchPage() {
                     >
                       {!isMoi && (
                         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, opacity: 0.8 }}>
-                          {msg.pseudo}
+                          <Link
+                            href={`/joueurs/${encodeURIComponent(msg.pseudo)}`}
+                            style={{
+                              color: "#10b981",
+                              textDecoration: "none",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.textDecoration = "underline";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.textDecoration = "none";
+                            }}
+                          >
+                            {msg.pseudo}
+                          </Link>
                         </div>
                       )}
                       <div style={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
@@ -665,7 +717,8 @@ export default function MatchPage() {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { showNotification } from "../utils/notifications";
 import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
@@ -700,7 +701,24 @@ export default function PartiesPage() {
                       {p.zone} • {p.dateISO.replace("T", " ")}
                     </div>
                     <div style={{ fontSize: 13, opacity: 0.7, color: "#fff", marginTop: 4 }}>
-                      Organisé par <b>{p.organisateurPseudo}</b>
+                      Organisé par{" "}
+                      <Link
+                        href={`/joueurs/${encodeURIComponent(p.organisateurPseudo)}`}
+                        style={{
+                          color: "#10b981",
+                          textDecoration: "none",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.textDecoration = "underline";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.textDecoration = "none";
+                        }}
+                      >
+                        {p.organisateurPseudo}
+                      </Link>
                     </div>
                   </div>
 
@@ -715,7 +733,28 @@ export default function PartiesPage() {
                 </div>
 
                 <div style={{ fontSize: 14, opacity: 0.9, color: "#fff" }}>
-                  <b>Participants :</b> {p.participants.map((x) => x.pseudo).join(", ")}
+                  <b>Participants :</b>{" "}
+                  {p.participants.map((x, idx) => (
+                    <span key={x.pseudo}>
+                      {idx > 0 && ", "}
+                      <Link
+                        href={`/joueurs/${encodeURIComponent(x.pseudo)}`}
+                        style={{
+                          color: "#10b981",
+                          textDecoration: "none",
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.textDecoration = "underline";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.textDecoration = "none";
+                        }}
+                      >
+                        {x.pseudo}
+                      </Link>
+                    </span>
+                  ))}
                 </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -844,7 +883,25 @@ export default function PartiesPage() {
                             background: "#141414",
                           }}
                         >
-                          <div style={{ color: "#fff", fontSize: 14 }}>🙋 {d.pseudo}</div>
+                          <div style={{ color: "#fff", fontSize: 14 }}>
+                            🙋{" "}
+                            <Link
+                              href={`/joueurs/${encodeURIComponent(d.pseudo)}`}
+                              style={{
+                                color: "#10b981",
+                                textDecoration: "none",
+                                cursor: "pointer",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.textDecoration = "underline";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.textDecoration = "none";
+                              }}
+                            >
+                              {d.pseudo}
+                            </Link>
+                          </div>
 
                           <button
                             onClick={() => acceptRequest(p.id, d.pseudo)}
@@ -899,7 +956,25 @@ export default function PartiesPage() {
                           }}
                         >
                           <div style={{ flex: 1, minWidth: 150 }}>
-                            <div style={{ fontWeight: 600, color: "#fff", fontSize: 14, marginBottom: 4 }}>{j.pseudo}</div>
+                            <div style={{ fontSize: 14, marginBottom: 4 }}>
+                              <Link
+                                href={`/joueurs/${encodeURIComponent(j.pseudo)}`}
+                                style={{
+                                  fontWeight: 600,
+                                  color: "#10b981",
+                                  textDecoration: "none",
+                                  cursor: "pointer",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.textDecoration = "underline";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.textDecoration = "none";
+                                }}
+                              >
+                                {j.pseudo}
+                              </Link>
+                            </div>
                             <div style={{ fontSize: 12, opacity: 0.7, color: "#fff" }}>
                                {j.niveau} • Friendly {j.friendlyScore}
                             </div>

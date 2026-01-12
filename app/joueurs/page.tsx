@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 import type { Niveau } from "@/lib/types";
@@ -196,7 +197,26 @@ export default function JoueursPage() {
 
               {/* Infos */}
               <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontWeight: 600, color: "#fff", fontSize: 16, marginBottom: 4 }}>{p.pseudo}</div>
+                <Link
+                  href={`/joueurs/${encodeURIComponent(p.pseudo)}`}
+                  style={{
+                    fontWeight: 600,
+                    color: "#10b981",
+                    fontSize: 16,
+                    marginBottom: 4,
+                    textDecoration: "none",
+                    display: "inline-block",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.textDecoration = "underline";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.textDecoration = "none";
+                  }}
+                >
+                  {p.pseudo}
+                </Link>
                 <div style={{ fontSize: 13, opacity: 0.8, color: "#fff", marginBottom: 4 }}>
                   🎾 {p.niveau}
                 </div>
