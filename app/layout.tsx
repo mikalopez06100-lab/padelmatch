@@ -42,6 +42,10 @@ export default function RootLayout({
             backgroundAttachment: "fixed",
             opacity: 0.2,
           }}
+          onError={(e) => {
+            // Fallback si l'image ne charge pas
+            e.currentTarget.style.backgroundImage = "linear-gradient(135deg, #0a4a2e 0%, #062e1a 100%)";
+          }}
         />
         {/* Overlay sombre pour la lisibilité */}
         <div

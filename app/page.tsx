@@ -238,7 +238,17 @@ export default function Home() {
                         fontSize: 12,
                         cursor: "pointer",
                         textDecoration: "underline",
-                        padding: 0,
+                        padding: "4px 8px",
+                        fontWeight: 500,
+                        whiteSpace: "nowrap",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#34d399";
+                        e.currentTarget.style.textDecoration = "underline";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "#10b981";
+                        e.currentTarget.style.textDecoration = "underline";
                       }}
                     >
                       Mot de passe oublié ?
