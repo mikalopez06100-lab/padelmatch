@@ -7,6 +7,7 @@ import { showNotification } from "../utils/notifications";
 import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 import { loadTerrains, addTerrainPersonnalise, type Terrain } from "@/lib/data/terrains";
+import { loadCurrentProfil } from "@/lib/data/auth";
 
 type Groupe = {
   id: string;
@@ -150,6 +151,7 @@ export default function PartiesPage() {
   const [terrainTab, setTerrainTab] = useState<"select" | "add">("select");
   const [nouveauTerrainNom, setNouveauTerrainNom] = useState("");
   const [nouveauTerrainVille, setNouveauTerrainVille] = useState("");
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     const gs = load<Groupe[]>(GROUPES_KEY, []);
@@ -259,6 +261,13 @@ export default function PartiesPage() {
   }
 
   function createPartie() {
+    // Vérifier si l'utilisateur est connecté
+    const profilConnecte = loadCurrentProfil();
+    if (!profilConnecte || !profilConnecte.pseudo || profilConnecte.pseudo === "Joueur") {
+      setShowLoginModal(true);
+      return;
+    }
+
     if (!groupeSelectionne) return;
     if (!dateISO) return;
 
@@ -267,7 +276,7 @@ export default function PartiesPage() {
       return;
     }
 
-    const orgaPseudo = getMonPseudo(); // en MVP, l'organisateur = ton profil
+    const orgaPseudo = profilConnecte.pseudo; // Utiliser le pseudo du profil connecté
 
     const newPartie: Partie = {
       id: crypto.randomUUID(),
@@ -1199,6 +1208,79 @@ export default function PartiesPage() {
           })
         )}
       </div>
+
+      {/* Modal de connexion */}
+      {showLoginModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+          }}
+          onClick={() => setShowLoginModal(false)}
+        >
+          <div
+            style={{
+              background: "#1f1f1f",
+              borderRadius: 16,
+              padding: 32,
+              maxWidth: 400,
+              width: "100%",
+              border: "1px solid #2a2a2a",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: "#fff" }}>
+              🔒 Connexion requise
+            </h2>
+            <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 24, color: "#fff", lineHeight: 1.6 }}>
+              Vous devez être connecté pour créer un match. Connectez-vous ou créez un compte pour continuer.
+            </p>
+            <div style={{ display: "flex", gap: 12, flexDirection: "column" }}>
+              <Link
+                href="/"
+                onClick={() => setShowLoginModal(false)}
+                style={{
+                  padding: "12px 20px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#10b981",
+                  color: "#fff",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  textDecoration: "none",
+                  textAlign: "center",
+                }}
+              >
+                Se connecter / S'inscrire
+              </Link>
+              <button
+                onClick={() => setShowLoginModal(false)}
+                style={{
+                  padding: "12px 20px",
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "transparent",
+                  color: "#fff",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
