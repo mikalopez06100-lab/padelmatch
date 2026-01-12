@@ -6,6 +6,7 @@ import Link from "next/link";
 import { showNotification } from "../utils/notifications";
 import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
+import { loadTerrains, addTerrainPersonnalise, type Terrain } from "@/lib/data/terrains";
 
 type Groupe = {
   id: string;
@@ -34,6 +35,7 @@ type Partie = {
   dateISO: string; // ex: 2026-01-09T18:30
   format: "Amical" | "Compétitif" | "Mixte";
   placesTotal: number;
+  terrainId?: string; // ID du terrain (optionnel)
 
   organisateurPseudo: string;
   participants: Participant[];
@@ -143,6 +145,11 @@ export default function PartiesPage() {
   const [placesTotal, setPlacesTotal] = useState(4);
   const [visibilite, setVisibilite] = useState<VisibilitePartie>("groupe");
   const [cibleProfilPseudo, setCibleProfilPseudo] = useState("");
+  const [terrainId, setTerrainId] = useState("");
+  const [terrains, setTerrains] = useState<Terrain[]>([]);
+  const [terrainTab, setTerrainTab] = useState<"select" | "add">("select");
+  const [nouveauTerrainNom, setNouveauTerrainNom] = useState("");
+  const [nouveauTerrainVille, setNouveauTerrainVille] = useState("");
 
   useEffect(() => {
     const gs = load<Groupe[]>(GROUPES_KEY, []);
@@ -154,6 +161,9 @@ export default function PartiesPage() {
 
     // Charger les profils globaux
     setProfilsGlobaux(loadProfilsGlobaux());
+
+    // Charger les terrains
+    setTerrains(loadTerrains());
 
     // ✅ Migration/réparation des anciennes données
     const raw = load<any[]>(PARTIES_KEY, []);
@@ -267,6 +277,7 @@ export default function PartiesPage() {
       dateISO,
       format,
       placesTotal: Number(placesTotal) || 4,
+      terrainId: terrainId || undefined,
 
       organisateurPseudo: orgaPseudo,
       participants: [{ pseudo: orgaPseudo, role: "organisateur" as const }],
@@ -289,6 +300,27 @@ export default function PartiesPage() {
     setPlacesTotal(4);
     setVisibilite("groupe");
     setCibleProfilPseudo("");
+    setTerrainId("");
+    setTerrainTab("select");
+  }
+
+  function handleAddTerrain() {
+    if (!nouveauTerrainNom.trim() || !nouveauTerrainVille.trim()) {
+      alert("Veuillez remplir le nom et la ville du terrain.");
+      return;
+    }
+
+    try {
+      const nouveauTerrain = addTerrainPersonnalise(nouveauTerrainNom.trim(), nouveauTerrainVille.trim());
+      setTerrains(loadTerrains());
+      setTerrainId(nouveauTerrain.id);
+      setTerrainTab("select");
+      setNouveauTerrainNom("");
+      setNouveauTerrainVille("");
+      alert("Terrain ajouté avec succès ✅");
+    } catch (error: any) {
+      alert(error.message || "Erreur lors de l'ajout du terrain.");
+    }
   }
 
   function toggleOpen(id: string) {
@@ -587,6 +619,121 @@ export default function PartiesPage() {
           />
         </div>
 
+        {/* Sélection de terrain */}
+        <div style={{ display: "grid", gap: 8 }}>
+          <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Terrain</label>
+          
+          {/* Onglets */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={() => setTerrainTab("select")}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: terrainTab === "select" ? "#10b981" : "transparent",
+                color: "#fff",
+                fontSize: 13,
+                cursor: "pointer",
+                fontWeight: terrainTab === "select" ? 600 : 400,
+              }}
+            >
+              Choisir un terrain
+            </button>
+            <button
+              type="button"
+              onClick={() => setTerrainTab("add")}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid #2a2a2a",
+                background: terrainTab === "add" ? "#10b981" : "transparent",
+                color: "#fff",
+                fontSize: 13,
+                cursor: "pointer",
+                fontWeight: terrainTab === "add" ? 600 : 400,
+              }}
+            >
+              Ajouter un terrain
+            </button>
+          </div>
+
+          {/* Contenu selon l'onglet */}
+          {terrainTab === "select" ? (
+            <select
+              value={terrainId}
+              onChange={(e) => setTerrainId(e.target.value)}
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid #2a2a2a",
+                background: "#141414",
+                color: "#fff",
+                fontSize: 14,
+              }}
+            >
+              <option value="" style={{ background: "#141414", color: "#fff" }}>
+                Aucun terrain sélectionné
+              </option>
+              {terrains.map((t) => (
+                <option key={t.id} value={t.id} style={{ background: "#141414", color: "#fff" }}>
+                  {t.nom} — {t.ville}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              <input
+                type="text"
+                value={nouveauTerrainNom}
+                onChange={(e) => setNouveauTerrainNom(e.target.value)}
+                placeholder="Nom du terrain"
+                style={{
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "#141414",
+                  color: "#fff",
+                  fontSize: 14,
+                }}
+              />
+              <input
+                type="text"
+                value={nouveauTerrainVille}
+                onChange={(e) => setNouveauTerrainVille(e.target.value)}
+                placeholder="Ville"
+                style={{
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid #2a2a2a",
+                  background: "#141414",
+                  color: "#fff",
+                  fontSize: 14,
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleAddTerrain}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#10b981",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Ajouter le terrain
+              </button>
+            </div>
+          )}
+        </div>
+
         <div style={{ display: "grid", gap: 8 }}>
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Proposer à</label>
           <select
@@ -700,6 +847,14 @@ export default function PartiesPage() {
                     <div style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>
                       {p.zone} • {p.dateISO.replace("T", " ")}
                     </div>
+                    {p.terrainId && (() => {
+                      const terrain = terrains.find(t => t.id === p.terrainId);
+                      return terrain ? (
+                        <div style={{ fontSize: 13, opacity: 0.7, color: "#10b981", marginTop: 4 }}>
+                          🎾 {terrain.nom} — {terrain.ville}
+                        </div>
+                      ) : null;
+                    })()}
                     <div style={{ fontSize: 13, opacity: 0.7, color: "#fff", marginTop: 4 }}>
                       Organisé par{" "}
                       <Link

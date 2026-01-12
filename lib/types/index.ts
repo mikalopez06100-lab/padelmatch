@@ -39,6 +39,7 @@ export interface Partie {
   dateISO: string; // ex: 2026-01-09T18:30
   format: PartieFormat;
   placesTotal: number;
+  terrainId?: string; // ID du terrain (optionnel pour compatibilité)
 
   organisateurPseudo: string;
   participants: Participant[];
