@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { logout as firebaseLogout } from "@/lib/firebase/auth";
+import { STORAGE_KEYS, removeFromStorage } from "@/lib/data/storage";
 
 const PROFIL_KEY = "padelmatch_profil_v1";
 
@@ -33,13 +35,28 @@ export function AuthButton() {
     return () => clearInterval(interval);
   }, []);
 
-  function handleLogout() {
-    if (confirm("Êtes-vous sûr de vouloir vous déconnecter ?")) {
-      localStorage.removeItem(PROFIL_KEY);
-      setIsLoggedIn(false);
-      router.push("/");
-      router.refresh();
+  async function handleLogout() {
+    if (!confirm("Êtes-vous sûr de vouloir vous déconnecter ?")) {
+      return;
     }
+
+    try {
+      // Déconnecter Firebase Auth
+      await firebaseLogout();
+      console.log("✅ Déconnexion Firebase réussie");
+    } catch (error: any) {
+      console.error("❌ Erreur lors de la déconnexion Firebase:", error);
+      // Continuer quand même pour nettoyer le localStorage
+    }
+
+    // Nettoyer le localStorage
+    removeFromStorage(STORAGE_KEYS.profil);
+    localStorage.removeItem(PROFIL_KEY);
+    setIsLoggedIn(false);
+    
+    // Rediriger vers la page d'accueil
+    router.push("/");
+    router.refresh();
   }
 
   function handleLogin() {
