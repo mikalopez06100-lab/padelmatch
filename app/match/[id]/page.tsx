@@ -162,9 +162,17 @@ export default function MatchPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Charger les terrains
+  // Charger les terrains depuis Firestore
   useEffect(() => {
-    setTerrains(loadTerrains());
+    async function loadTerrainsFromFirestore() {
+      try {
+        const terrainsData = await loadTerrains();
+        setTerrains(terrainsData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des terrains:", error);
+      }
+    }
+    loadTerrainsFromFirestore();
   }, []);
 
   useEffect(() => {
