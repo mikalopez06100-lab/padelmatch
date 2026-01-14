@@ -100,15 +100,33 @@ export async function getParties(): Promise<Partie[]> {
 }
 
 /**
+ * Nettoie un objet en supprimant les valeurs undefined
+ * Firestore n'accepte pas les valeurs undefined
+ */
+function cleanFirestoreData(data: any): any {
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
+/**
  * Crée une nouvelle partie
  */
 export async function createPartie(partie: Omit<Partie, "id" | "createdAt">): Promise<string> {
   try {
     console.log("🔄 Création de la partie dans Firestore:", partie);
-    const docRef = await addDoc(collection(db, "parties"), {
+    
+    // Nettoyer les valeurs undefined (Firestore ne les accepte pas)
+    const partieData = cleanFirestoreData({
       ...partie,
       createdAt: Timestamp.now(),
     });
+    
+    const docRef = await addDoc(collection(db, "parties"), partieData);
     console.log("✅ Partie créée avec succès, ID:", docRef.id);
     return docRef.id;
   } catch (error: any) {
@@ -128,7 +146,9 @@ export async function createPartie(partie: Omit<Partie, "id" | "createdAt">): Pr
 export async function updatePartie(partieId: string, updates: Partial<Partie>) {
   try {
     const docRef = doc(db, "parties", partieId);
-    await updateDoc(docRef, updates);
+    // Nettoyer les valeurs undefined
+    const cleanedUpdates = cleanFirestoreData(updates);
+    await updateDoc(docRef, cleanedUpdates);
   } catch (error) {
     console.error("Erreur lors de la mise à jour de la partie:", error);
     throw error;
@@ -186,10 +206,11 @@ export async function getGroupes(): Promise<Groupe[]> {
  */
 export async function createGroupe(groupe: Omit<Groupe, "id" | "createdAt">): Promise<string> {
   try {
-    const docRef = await addDoc(collection(db, "groupes"), {
+    const groupeData = cleanFirestoreData({
       ...groupe,
       createdAt: Timestamp.now(),
     });
+    const docRef = await addDoc(collection(db, "groupes"), groupeData);
     return docRef.id;
   } catch (error) {
     console.error("Erreur lors de la création du groupe:", error);
@@ -203,7 +224,8 @@ export async function createGroupe(groupe: Omit<Groupe, "id" | "createdAt">): Pr
 export async function updateGroupe(groupeId: string, updates: Partial<Groupe>) {
   try {
     const docRef = doc(db, "groupes", groupeId);
-    await updateDoc(docRef, updates);
+    const cleanedUpdates = cleanFirestoreData(updates);
+    await updateDoc(docRef, cleanedUpdates);
   } catch (error) {
     console.error("Erreur lors de la mise à jour du groupe:", error);
     throw error;
