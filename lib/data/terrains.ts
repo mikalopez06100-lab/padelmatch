@@ -1,14 +1,8 @@
 // Gestion des terrains de padel
-// Liste de base + possibilité d'ajouter des terrains personnalisés
+// Liste de base + terrains personnalisés stockés dans Firestore
 
-import { STORAGE_KEYS, loadFromStorage, saveToStorage } from "./storage";
-
-export interface Terrain {
-  id: string;
-  nom: string;
-  ville: string; // Pour le filtrage géographique
-  estPersonnalise: boolean; // true si ajouté par l'utilisateur
-}
+import type { Terrain } from "@/lib/types";
+import { getTerrainsPersonnalises, createTerrain, updateTerrain, deleteTerrain } from "@/lib/firebase/firestore";
 
 // Liste de base des terrains dans les Alpes-Maritimes
 const TERRAINS_BASE: Omit<Terrain, "id" | "estPersonnalise">[] = [
@@ -39,28 +33,44 @@ const TERRAINS_BASE: Omit<Terrain, "id" | "estPersonnalise">[] = [
 ];
 
 /**
- * Charge tous les terrains (base + personnalisés)
+ * Charge tous les terrains (base + personnalisés depuis Firestore)
  */
-export function loadTerrains(): Terrain[] {
+export async function loadTerrains(): Promise<Terrain[]> {
   const terrainsBase: Terrain[] = TERRAINS_BASE.map((t, index) => ({
     ...t,
     id: `base_${index}`,
     estPersonnalise: false,
   }));
 
-  const terrainsPersonnalises = loadFromStorage<Terrain[]>(
-    STORAGE_KEYS.terrainsPersonnalises,
-    []
-  );
-
-  return [...terrainsBase, ...terrainsPersonnalises];
+  try {
+    const terrainsPersonnalises = await getTerrainsPersonnalises();
+    return [...terrainsBase, ...terrainsPersonnalises];
+  } catch (error) {
+    console.error("Erreur lors du chargement des terrains depuis Firestore:", error);
+    // En cas d'erreur, retourner uniquement les terrains de base
+    return terrainsBase;
+  }
 }
 
 /**
- * Ajoute un terrain personnalisé
+ * Charge tous les terrains de manière synchrone (pour compatibilité)
+ * Retourne uniquement les terrains de base
+ * @deprecated Utiliser loadTerrains() de manière asynchrone
  */
-export function addTerrainPersonnalise(nom: string, ville: string): Terrain {
-  const terrains = loadTerrains();
+export function loadTerrainsSync(): Terrain[] {
+  return TERRAINS_BASE.map((t, index) => ({
+    ...t,
+    id: `base_${index}`,
+    estPersonnalise: false,
+  }));
+}
+
+/**
+ * Ajoute un terrain personnalisé dans Firestore
+ */
+export async function addTerrainPersonnalise(nom: string, ville: string): Promise<Terrain> {
+  // Charger tous les terrains pour vérifier les doublons
+  const terrains = await loadTerrains();
   
   // Vérifier si le terrain existe déjà
   const existe = terrains.some(
@@ -71,40 +81,36 @@ export function addTerrainPersonnalise(nom: string, ville: string): Terrain {
     throw new Error("Ce terrain existe déjà");
   }
 
-  const nouveauTerrain: Terrain = {
-    id: `perso_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    nom: nom.trim(),
-    ville: ville.trim(),
-    estPersonnalise: true,
-  };
-
-  const terrainsPersonnalises = loadFromStorage<Terrain[]>(
-    STORAGE_KEYS.terrainsPersonnalises,
-    []
-  );
-
-  terrainsPersonnalises.push(nouveauTerrain);
-  saveToStorage(STORAGE_KEYS.terrainsPersonnalises, terrainsPersonnalises);
-
-  return nouveauTerrain;
+  try {
+    const terrainId = await createTerrain({
+      nom: nom.trim(),
+      ville: ville.trim(),
+      estPersonnalise: true,
+    });
+    
+    return {
+      id: terrainId,
+      nom: nom.trim(),
+      ville: ville.trim(),
+      estPersonnalise: true,
+    };
+  } catch (error) {
+    console.error("Erreur lors de l'ajout du terrain:", error);
+    throw error;
+  }
 }
 
 /**
- * Met à jour un terrain personnalisé
+ * Met à jour un terrain personnalisé dans Firestore
  */
-export function updateTerrainPersonnalise(id: string, nom: string, ville: string): void {
-  const terrainsPersonnalises = loadFromStorage<Terrain[]>(
-    STORAGE_KEYS.terrainsPersonnalises,
-    []
-  );
-
-  const index = terrainsPersonnalises.findIndex((t) => t.id === id);
-  if (index === -1) {
-    throw new Error("Terrain personnalisé non trouvé");
+export async function updateTerrainPersonnalise(id: string, nom: string, ville: string): Promise<void> {
+  // Vérifier que l'ID ne commence pas par "base_" (terrains de base)
+  if (id.startsWith("base_")) {
+    throw new Error("Les terrains de base ne peuvent pas être modifiés");
   }
 
-  // Vérifier si un autre terrain avec le même nom et ville existe déjà
-  const terrains = loadTerrains();
+  // Charger tous les terrains pour vérifier les doublons
+  const terrains = await loadTerrains();
   const existe = terrains.some(
     (t) => t.id !== id && t.nom.toLowerCase() === nom.toLowerCase() && t.ville.toLowerCase() === ville.toLowerCase()
   );
@@ -113,32 +119,41 @@ export function updateTerrainPersonnalise(id: string, nom: string, ville: string
     throw new Error("Ce terrain existe déjà");
   }
 
-  terrainsPersonnalises[index] = {
-    ...terrainsPersonnalises[index],
-    nom: nom.trim(),
-    ville: ville.trim(),
-  };
-
-  saveToStorage(STORAGE_KEYS.terrainsPersonnalises, terrainsPersonnalises);
+  try {
+    await updateTerrain(id, {
+      nom: nom.trim(),
+      ville: ville.trim(),
+    });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du terrain:", error);
+    throw error;
+  }
 }
 
 /**
- * Supprime un terrain personnalisé
+ * Supprime un terrain personnalisé de Firestore
  */
-export function removeTerrainPersonnalise(id: string): void {
-  const terrainsPersonnalises = loadFromStorage<Terrain[]>(
-    STORAGE_KEYS.terrainsPersonnalises,
-    []
-  );
+export async function removeTerrainPersonnalise(id: string): Promise<void> {
+  // Vérifier que l'ID ne commence pas par "base_" (terrains de base)
+  if (id.startsWith("base_")) {
+    throw new Error("Les terrains de base ne peuvent pas être supprimés");
+  }
 
-  const filtered = terrainsPersonnalises.filter((t) => t.id !== id);
-  saveToStorage(STORAGE_KEYS.terrainsPersonnalises, filtered);
+  try {
+    await deleteTerrain(id);
+  } catch (error) {
+    console.error("Erreur lors de la suppression du terrain:", error);
+    throw error;
+  }
 }
 
 /**
  * Trouve un terrain par ID
  */
-export function getTerrainById(id: string): Terrain | null {
-  const terrains = loadTerrains();
+export async function getTerrainById(id: string): Promise<Terrain | null> {
+  const terrains = await loadTerrains();
   return terrains.find((t) => t.id === id) || null;
 }
+
+// Réexporter le type pour compatibilité
+export type { Terrain };

@@ -107,5 +107,23 @@ service cloud.firestore {
       allow delete: if isAuthenticated() &&
                        resource.data.pseudo == getUserPseudo();
     }
+    
+    // ===== TERRAINS =====
+    match /terrains/{terrainId} {
+      // Lecture : publique (pour voir les terrains disponibles)
+      allow read: if true;
+      
+      // Création : uniquement par utilisateurs authentifiés
+      allow create: if isAuthenticated() &&
+                       request.resource.data.keys().hasAll(['nom', 'ville', 'createdAt']) &&
+                       request.resource.data.nom is string &&
+                       request.resource.data.ville is string;
+      
+      // Mise à jour : uniquement par utilisateurs authentifiés
+      allow update: if isAuthenticated();
+      
+      // Suppression : uniquement par utilisateurs authentifiés
+      allow delete: if isAuthenticated();
+    }
   }
 }

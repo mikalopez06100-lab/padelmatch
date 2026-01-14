@@ -103,6 +103,13 @@ export interface Joueur {
   friendlyScore: number; // 0-100
 }
 
+export interface Terrain {
+  id: string;
+  nom: string;
+  ville: string; // Pour le filtrage géographique
+  estPersonnalise: boolean; // true si ajouté par l'utilisateur (pas un terrain de base)
+}
+
 // Types pour Firebase/Supabase (futur)
 export interface PartieDocument {
   // Structure prête pour Firebase Firestore / Supabase

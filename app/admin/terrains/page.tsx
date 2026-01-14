@@ -5,6 +5,7 @@ import { loadTerrains, addTerrainPersonnalise, updateTerrainPersonnalise, remove
 
 export default function AdminTerrainsPage() {
   const [terrains, setTerrains] = useState<Terrain[]>([]);
+  const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNom, setEditNom] = useState("");
   const [editVille, setEditVille] = useState("");
@@ -17,8 +18,16 @@ export default function AdminTerrainsPage() {
     refreshTerrains();
   }, []);
 
-  function refreshTerrains() {
-    setTerrains(loadTerrains());
+  async function refreshTerrains() {
+    try {
+      setLoading(true);
+      const terrainsData = await loadTerrains();
+      setTerrains(terrainsData);
+    } catch (error: any) {
+      showMessage("error", error.message || "Erreur lors du chargement des terrains.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function showMessage(type: "success" | "error", text: string) {
@@ -26,20 +35,23 @@ export default function AdminTerrainsPage() {
     setTimeout(() => setMessage(null), 3000);
   }
 
-  function handleAddTerrain() {
+  async function handleAddTerrain() {
     if (!nouveauNom.trim() || !nouveauVille.trim()) {
       showMessage("error", "Veuillez remplir le nom et la ville du terrain.");
       return;
     }
 
     try {
-      addTerrainPersonnalise(nouveauNom.trim(), nouveauVille.trim());
-      refreshTerrains();
+      setLoading(true);
+      await addTerrainPersonnalise(nouveauNom.trim(), nouveauVille.trim());
+      await refreshTerrains();
       setNouveauNom("");
       setNouveauVille("");
       showMessage("success", "Terrain ajouté avec succès ✅");
     } catch (error: any) {
       showMessage("error", error.message || "Erreur lors de l'ajout du terrain.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -59,7 +71,7 @@ export default function AdminTerrainsPage() {
     setEditVille("");
   }
 
-  function handleUpdateTerrain() {
+  async function handleUpdateTerrain() {
     if (!editingId) return;
     if (!editNom.trim() || !editVille.trim()) {
       showMessage("error", "Veuillez remplir le nom et la ville du terrain.");
@@ -67,16 +79,19 @@ export default function AdminTerrainsPage() {
     }
 
     try {
-      updateTerrainPersonnalise(editingId, editNom.trim(), editVille.trim());
-      refreshTerrains();
+      setLoading(true);
+      await updateTerrainPersonnalise(editingId, editNom.trim(), editVille.trim());
+      await refreshTerrains();
       cancelEdit();
       showMessage("success", "Terrain modifié avec succès ✅");
     } catch (error: any) {
       showMessage("error", error.message || "Erreur lors de la modification du terrain.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  function handleDeleteTerrain(id: string, nom: string, estPersonnalise: boolean) {
+  async function handleDeleteTerrain(id: string, nom: string, estPersonnalise: boolean) {
     if (!estPersonnalise) {
       showMessage("error", "Les terrains de base ne peuvent pas être supprimés.");
       return;
@@ -87,11 +102,14 @@ export default function AdminTerrainsPage() {
     }
 
     try {
-      removeTerrainPersonnalise(id);
-      refreshTerrains();
+      setLoading(true);
+      await removeTerrainPersonnalise(id);
+      await refreshTerrains();
       showMessage("success", "Terrain supprimé avec succès ✅");
     } catch (error: any) {
       showMessage("error", error.message || "Erreur lors de la suppression du terrain.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -154,6 +172,7 @@ export default function AdminTerrainsPage() {
               value={nouveauNom}
               onChange={(e) => setNouveauNom(e.target.value)}
               placeholder="Nom du terrain"
+              disabled={loading}
               style={{
                 padding: 12,
                 borderRadius: 10,
@@ -162,6 +181,7 @@ export default function AdminTerrainsPage() {
                 color: "#fff",
                 fontSize: 14,
                 outline: "none",
+                opacity: loading ? 0.5 : 1,
               }}
             />
             <input
@@ -169,6 +189,7 @@ export default function AdminTerrainsPage() {
               value={nouveauVille}
               onChange={(e) => setNouveauVille(e.target.value)}
               placeholder="Ville"
+              disabled={loading}
               style={{
                 padding: 12,
                 borderRadius: 10,
@@ -177,10 +198,12 @@ export default function AdminTerrainsPage() {
                 color: "#fff",
                 fontSize: 14,
                 outline: "none",
+                opacity: loading ? 0.5 : 1,
               }}
             />
             <button
               onClick={handleAddTerrain}
+              disabled={loading}
               style={{
                 padding: "12px 20px",
                 borderRadius: 10,
@@ -189,10 +212,11 @@ export default function AdminTerrainsPage() {
                 color: "#fff",
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.5 : 1,
               }}
             >
-              Ajouter le terrain
+              {loading ? "Ajout en cours..." : "Ajouter le terrain"}
             </button>
           </div>
         </div>
@@ -255,6 +279,12 @@ export default function AdminTerrainsPage() {
           </div>
         </div>
 
+        {loading && terrains.length === 0 && (
+          <div style={{ textAlign: "center", padding: 40, opacity: 0.7 }}>
+            Chargement des terrains...
+          </div>
+        )}
+
         {/* Liste des terrains personnalisés */}
         {terrainsPersonnalises.length > 0 && (
           <div
@@ -291,6 +321,7 @@ export default function AdminTerrainsPage() {
                         value={editNom}
                         onChange={(e) => setEditNom(e.target.value)}
                         placeholder="Nom"
+                        disabled={loading}
                         style={{
                           flex: 1,
                           minWidth: 150,
@@ -301,6 +332,7 @@ export default function AdminTerrainsPage() {
                           color: "#fff",
                           fontSize: 14,
                           outline: "none",
+                          opacity: loading ? 0.5 : 1,
                         }}
                       />
                       <input
@@ -308,6 +340,7 @@ export default function AdminTerrainsPage() {
                         value={editVille}
                         onChange={(e) => setEditVille(e.target.value)}
                         placeholder="Ville"
+                        disabled={loading}
                         style={{
                           flex: 1,
                           minWidth: 150,
@@ -318,10 +351,12 @@ export default function AdminTerrainsPage() {
                           color: "#fff",
                           fontSize: 14,
                           outline: "none",
+                          opacity: loading ? 0.5 : 1,
                         }}
                       />
                       <button
                         onClick={handleUpdateTerrain}
+                        disabled={loading}
                         style={{
                           padding: "8px 16px",
                           borderRadius: 8,
@@ -330,13 +365,15 @@ export default function AdminTerrainsPage() {
                           color: "#fff",
                           fontSize: 13,
                           fontWeight: 600,
-                          cursor: "pointer",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          opacity: loading ? 0.5 : 1,
                         }}
                       >
                         Valider
                       </button>
                       <button
                         onClick={cancelEdit}
+                        disabled={loading}
                         style={{
                           padding: "8px 16px",
                           borderRadius: 8,
@@ -344,7 +381,8 @@ export default function AdminTerrainsPage() {
                           background: "transparent",
                           color: "#fff",
                           fontSize: 13,
-                          cursor: "pointer",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          opacity: loading ? 0.5 : 1,
                         }}
                       >
                         Annuler
@@ -358,6 +396,7 @@ export default function AdminTerrainsPage() {
                       </div>
                       <button
                         onClick={() => startEdit(terrain)}
+                        disabled={loading}
                         style={{
                           padding: "8px 16px",
                           borderRadius: 8,
@@ -366,13 +405,15 @@ export default function AdminTerrainsPage() {
                           color: "#fff",
                           fontSize: 13,
                           fontWeight: 600,
-                          cursor: "pointer",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          opacity: loading ? 0.5 : 1,
                         }}
                       >
                         Modifier
                       </button>
                       <button
                         onClick={() => handleDeleteTerrain(terrain.id, terrain.nom, terrain.estPersonnalise)}
+                        disabled={loading}
                         style={{
                           padding: "8px 16px",
                           borderRadius: 8,
@@ -381,7 +422,8 @@ export default function AdminTerrainsPage() {
                           color: "#fff",
                           fontSize: 13,
                           fontWeight: 600,
-                          cursor: "pointer",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          opacity: loading ? 0.5 : 1,
                         }}
                       >
                         Supprimer

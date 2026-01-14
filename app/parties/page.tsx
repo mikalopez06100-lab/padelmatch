@@ -177,8 +177,16 @@ export default function PartiesPage() {
     // Charger les profils globaux
     setProfilsGlobaux(loadProfilsGlobaux());
 
-    // Charger les terrains
-    setTerrains(loadTerrains());
+    // Charger les terrains depuis Firestore
+    async function loadTerrainsFromFirestore() {
+      try {
+        const terrainsData = await loadTerrains();
+        setTerrains(terrainsData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des terrains:", error);
+      }
+    }
+    loadTerrainsFromFirestore();
 
     // Charger les parties depuis Firestore
     async function loadPartiesFromFirestore() {
@@ -449,15 +457,16 @@ export default function PartiesPage() {
     setTerrainTab("select");
   }
 
-  function handleAddTerrain() {
+  async function handleAddTerrain() {
     if (!nouveauTerrainNom.trim() || !nouveauTerrainVille.trim()) {
       alert("Veuillez remplir le nom et la ville du terrain.");
       return;
     }
 
     try {
-      const nouveauTerrain = addTerrainPersonnalise(nouveauTerrainNom.trim(), nouveauTerrainVille.trim());
-      setTerrains(loadTerrains());
+      const nouveauTerrain = await addTerrainPersonnalise(nouveauTerrainNom.trim(), nouveauTerrainVille.trim());
+      const terrainsData = await loadTerrains();
+      setTerrains(terrainsData);
       setTerrainId(nouveauTerrain.id);
       setTerrainTab("select");
       setNouveauTerrainNom("");

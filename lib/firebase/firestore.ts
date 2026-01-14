@@ -16,7 +16,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./config";
-import type { Partie, Groupe, Profil, Message } from "@/lib/types";
+import type { Partie, Groupe, Profil, Message, Terrain } from "@/lib/types";
 
 // ===== PROFILS =====
 
@@ -325,4 +325,67 @@ export function subscribeToMessages(partieId: string, callback: (messages: Messa
     })) as Message[];
     callback(messages);
   });
+}
+
+// ===== TERRAINS =====
+
+/**
+ * Récupère tous les terrains personnalisés depuis Firestore
+ */
+export async function getTerrainsPersonnalises(): Promise<Terrain[]> {
+  try {
+    const querySnapshot = await getDocs(collection(db, "terrains"));
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      estPersonnalise: true, // Tous les terrains dans Firestore sont personnalisés
+    })) as Terrain[];
+  } catch (error) {
+    console.error("Erreur lors de la récupération des terrains:", error);
+    return [];
+  }
+}
+
+/**
+ * Crée un nouveau terrain personnalisé
+ */
+export async function createTerrain(terrain: Omit<Terrain, "id">): Promise<string> {
+  try {
+    const terrainData = cleanFirestoreData({
+      nom: terrain.nom,
+      ville: terrain.ville,
+      createdAt: Timestamp.now(),
+    });
+    const docRef = await addDoc(collection(db, "terrains"), terrainData);
+    return docRef.id;
+  } catch (error) {
+    console.error("Erreur lors de la création du terrain:", error);
+    throw error;
+  }
+}
+
+/**
+ * Met à jour un terrain personnalisé
+ */
+export async function updateTerrain(terrainId: string, updates: { nom?: string; ville?: string }) {
+  try {
+    const docRef = doc(db, "terrains", terrainId);
+    const cleanedUpdates = cleanFirestoreData(updates);
+    await updateDoc(docRef, cleanedUpdates);
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du terrain:", error);
+    throw error;
+  }
+}
+
+/**
+ * Supprime un terrain personnalisé
+ */
+export async function deleteTerrain(terrainId: string) {
+  try {
+    await deleteDoc(doc(db, "terrains", terrainId));
+  } catch (error) {
+    console.error("Erreur lors de la suppression du terrain:", error);
+    throw error;
+  }
 }
