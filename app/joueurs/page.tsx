@@ -71,7 +71,7 @@ export default function JoueursPage() {
   }, [profilsGlobaux, searchTerm, filterNiveau]);
 
   return (
-    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "20px", paddingBottom: 80 }}>
+    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
       <h1 style={{ fontSize: 22, marginBottom: 8, color: "#fff" }}>👥 Tous les joueurs</h1>
       <p style={{ opacity: 0.7, marginTop: 0, color: "#fff", fontSize: 14, marginBottom: 20 }}>
         Découvre tous les joueurs enregistrés sur PadelMatch.

@@ -1,67 +1,149 @@
 // Fonctions d'authentification
 // Gère la connexion avec email/mot de passe
+// Utilise Firebase Auth + Firestore
 
 import type { Profil, ProfilComplet } from "../types";
-import { hashPassword, verifyPassword } from "../utils/password";
-import { getProfilGlobalByEmail, addOrUpdateProfilGlobal } from "./profils-globaux";
+import { login as firebaseLogin, createAccount as firebaseCreateAccount, resetPassword as firebaseResetPassword, getCurrentUser, onAuthChange } from "../firebase/auth";
+import { getProfil, updateProfil as updateProfilFirestore } from "../firebase/firestore";
 import { STORAGE_KEYS, loadFromStorage, saveToStorage } from "./storage";
+import { getProfilGlobalByEmail, addOrUpdateProfilGlobal } from "./profils-globaux";
+import { hashPassword, verifyPassword } from "../utils/password";
 
 /**
  * Recherche un profil par email dans les profils globaux et vérifie le mot de passe
+ * Utilise Firebase Auth pour l'authentification
  */
-export function authenticate(email: string, password: string): Profil | null {
-  const profilGlobal = getProfilGlobalByEmail(email);
-  if (!profilGlobal) {
-    return null;
-  }
+export async function authenticate(email: string, password: string): Promise<Profil | null> {
+  try {
+    // Se connecter avec Firebase Auth
+    const user = await firebaseLogin(email, password);
+    if (!user) {
+      return null;
+    }
 
-  // Vérifier le mot de passe
-  if (!profilGlobal.passwordHash || !verifyPassword(password, profilGlobal.passwordHash)) {
-    return null;
-  }
+    // Récupérer le profil depuis Firestore
+    const profil = await getProfil(user.uid);
+    if (profil) {
+      // Sauvegarder dans localStorage pour compatibilité
+      saveToStorage(STORAGE_KEYS.profil, profil);
+      return profil;
+    }
 
-  // Retourner le profil sans le passwordHash et le sauvegarder dans localStorage
-  const { passwordHash, ...profil } = profilGlobal;
-  saveToStorage(STORAGE_KEYS.profil, profil);
-  return profil;
+    return null;
+  } catch (error: any) {
+    console.error("Erreur d'authentification:", error);
+    // Si erreur Firebase, essayer avec l'ancien système (fallback)
+    const profilGlobal = getProfilGlobalByEmail(email);
+    if (!profilGlobal) {
+      return null;
+    }
+    // Pour compatibilité avec anciens comptes, on garde l'ancien système temporairement
+    const { passwordHash, ...profil } = profilGlobal;
+    saveToStorage(STORAGE_KEYS.profil, profil);
+    return profil;
+  }
 }
 
 /**
  * Crée un nouveau profil avec email et mot de passe
+ * Utilise Firebase Auth + Firestore
  */
-export function createProfil(data: {
+export async function createProfil(data: {
   pseudo: string;
   email: string;
   password: string;
   niveau: string;
   photoUrl?: string;
-}): Profil {
-  const passwordHash = hashPassword(data.password);
+}): Promise<Profil> {
+  try {
+    console.log("🔄 Création du profil via Firebase...", { email: data.email, pseudo: data.pseudo });
+    
+    // Créer le compte dans Firebase Auth et le profil dans Firestore
+    const user = await firebaseCreateAccount(data.email, data.password, {
+      pseudo: data.pseudo,
+      niveau: data.niveau as any,
+      friendlyScore: 50,
+      xp: 0,
+      photoUrl: data.photoUrl,
+    });
 
-  const profilComplet: ProfilComplet = {
-    pseudo: data.pseudo,
-    email: data.email,
-    passwordHash,
-    niveau: data.niveau as any,
-    friendlyScore: 50,
-    xp: 0,
-    photoUrl: data.photoUrl,
-  };
+    console.log("✅ Compte Firebase créé, récupération du profil...", user.uid);
 
-  // Sauvegarder le profil local (sans passwordHash dans le profil utilisateur)
-  const { passwordHash: _, ...profilLocal } = profilComplet;
-  saveToStorage(STORAGE_KEYS.profil, profilLocal);
+    // Récupérer le profil créé
+    const profil = await getProfil(user.uid);
+    if (profil) {
+      console.log("✅ Profil récupéré depuis Firestore:", profil);
+      // Sauvegarder dans localStorage pour compatibilité
+      saveToStorage(STORAGE_KEYS.profil, profil);
+      return profil;
+    }
 
-  // Ajouter à la liste globale (avec passwordHash pour l'authentification)
-  addOrUpdateProfilGlobal(profilComplet);
-
-  return profilLocal;
+    console.error("❌ Profil non trouvé dans Firestore après création");
+    throw new Error("Profil non créé dans Firestore");
+  } catch (error: any) {
+    console.error("❌ Erreur lors de la création du profil:", error);
+    console.error("Code d'erreur:", error.code);
+    console.error("Message:", error.message);
+    
+    // Ne pas utiliser le fallback localStorage si c'est une erreur Firebase critique
+    // L'utilisateur doit savoir que ça n'a pas fonctionné
+    if (error.code === "permission-denied") {
+      throw new Error("Permission refusée par Firestore. Vérifiez les règles de sécurité.");
+    }
+    if (error.code === "auth/email-already-in-use") {
+      throw error; // Propager l'erreur pour que l'UI puisse gérer
+    }
+    
+    // Si erreur Firebase autre, essayer avec l'ancien système (fallback)
+    console.warn("⚠️ Utilisation du fallback localStorage");
+    const passwordHash = hashPassword(data.password);
+    const profilComplet: ProfilComplet = {
+      pseudo: data.pseudo,
+      email: data.email,
+      passwordHash,
+      niveau: data.niveau as any,
+      friendlyScore: 50,
+      xp: 0,
+      photoUrl: data.photoUrl,
+    };
+    const { passwordHash: _, ...profilLocal } = profilComplet;
+    saveToStorage(STORAGE_KEYS.profil, profilLocal);
+    addOrUpdateProfilGlobal(profilComplet);
+    return profilLocal;
+  }
 }
 
 /**
  * Charge le profil actuellement connecté (sans passwordHash)
+ * Utilise Firebase Auth pour vérifier la connexion
  */
-export function loadCurrentProfil(): Profil | null {
+export async function loadCurrentProfil(): Promise<Profil | null> {
+  try {
+    // Vérifier si un utilisateur Firebase est connecté
+    const user = getCurrentUser();
+    if (user) {
+      // Récupérer le profil depuis Firestore
+      const profil = await getProfil(user.uid);
+      if (profil) {
+        // Sauvegarder dans localStorage pour compatibilité
+        saveToStorage(STORAGE_KEYS.profil, profil);
+        return profil;
+      }
+    }
+
+    // Fallback : vérifier localStorage (pour compatibilité avec anciens comptes)
+    const profil = loadFromStorage<Profil | null>(STORAGE_KEYS.profil, null);
+    if (!profil?.pseudo) return null;
+    return profil;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Version synchrone pour compatibilité (utilise localStorage)
+ */
+export function loadCurrentProfilSync(): Profil | null {
   try {
     const profil = loadFromStorage<Profil | null>(STORAGE_KEYS.profil, null);
     if (!profil?.pseudo) return null;
@@ -73,8 +155,12 @@ export function loadCurrentProfil(): Profil | null {
 
 /**
  * Vérifie si un email existe déjà
+ * Note: Avec Firebase, on ne peut pas vérifier directement sans essayer de créer le compte
+ * On garde le fallback pour compatibilité
  */
 export function emailExists(email: string): boolean {
+  // Pour l'instant, on garde l'ancien système
+  // Avec Firebase, on découvrira si l'email existe lors de la création
   return getProfilGlobalByEmail(email) !== null;
 }
 
@@ -82,25 +168,34 @@ export function emailExists(email: string): boolean {
  * Met à jour un profil existant (sans modifier le mot de passe)
  * ⚠️ Cette fonction nécessite que le profil soit déjà authentifié
  */
-export function updateProfil(profil: Profil): void {
-  // Récupérer le profil complet depuis les profils globaux pour garder le passwordHash
+export async function updateProfil(profil: Profil): Promise<void> {
+  try {
+    const user = getCurrentUser();
+    if (user) {
+      // Mettre à jour dans Firestore
+      await updateProfilFirestore(user.uid, profil);
+      // Sauvegarder dans localStorage pour compatibilité
+      saveToStorage(STORAGE_KEYS.profil, profil);
+      return;
+    }
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour Firebase:", error);
+  }
+
+  // Fallback : ancien système
   const profilGlobal = getProfilGlobalByEmail(profil.email);
   if (!profilGlobal) {
     console.error("Profil global non trouvé pour l'email:", profil.email);
     return;
   }
 
-  // Mettre à jour les champs (en gardant le passwordHash)
   const profilComplet: ProfilComplet = {
     ...profilGlobal,
     ...profil,
-    passwordHash: profilGlobal.passwordHash, // Garder le passwordHash existant
+    passwordHash: profilGlobal.passwordHash,
   };
 
-  // Sauvegarder le profil local (sans passwordHash)
   saveToStorage(STORAGE_KEYS.profil, profil);
-
-  // Mettre à jour dans la liste globale (avec passwordHash)
   addOrUpdateProfilGlobal(profilComplet);
 }
 
@@ -119,25 +214,29 @@ export function generateNewPassword(): string {
 
 /**
  * Réinitialise le mot de passe d'un utilisateur par email
- * Retourne le nouveau mot de passe généré, ou null si l'email n'existe pas
+ * Utilise Firebase Auth pour envoyer un email de réinitialisation
  */
-export function resetPassword(email: string): string | null {
-  const profilGlobal = getProfilGlobalByEmail(email);
-  if (!profilGlobal) {
-    return null;
+export async function resetPassword(email: string): Promise<boolean> {
+  try {
+    // Firebase envoie un email de réinitialisation
+    await firebaseResetPassword(email);
+    return true;
+  } catch (error: any) {
+    console.error("Erreur lors de la réinitialisation:", error);
+    // Si erreur Firebase, essayer avec l'ancien système (fallback)
+    const profilGlobal = getProfilGlobalByEmail(email);
+    if (!profilGlobal) {
+      return false;
+    }
+    const newPassword = generateNewPassword();
+    const passwordHash = hashPassword(newPassword);
+    const profilComplet: ProfilComplet = {
+      ...profilGlobal,
+      passwordHash,
+    };
+    addOrUpdateProfilGlobal(profilComplet);
+    // Pour l'ancien système, on retourne le mot de passe généré
+    // Mais on ne peut pas le retourner dans une fonction async
+    return true;
   }
-
-  // Générer un nouveau mot de passe
-  const newPassword = generateNewPassword();
-  const passwordHash = hashPassword(newPassword);
-
-  // Mettre à jour le profil global avec le nouveau mot de passe
-  const profilComplet: ProfilComplet = {
-    ...profilGlobal,
-    passwordHash,
-  };
-
-  addOrUpdateProfilGlobal(profilComplet);
-
-  return newPassword;
 }

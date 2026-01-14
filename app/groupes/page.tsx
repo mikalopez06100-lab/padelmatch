@@ -105,7 +105,7 @@ export default function GroupesPage() {
   }, []);
 
   return (
-    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "20px", paddingBottom: 80 }}>
+    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
       <h1 style={{ fontSize: 22, marginBottom: 8, color: "#fff" }}>👥 Mes groupes</h1>
       <p style={{ opacity: 0.7, marginTop: 0, color: "#fff", fontSize: 14 }}>
         Crée un groupe et sélectionne les profils à intégrer.
@@ -128,6 +128,8 @@ export default function GroupesPage() {
           onChange={(e) => setNom(e.target.value)}
           placeholder="Nom du groupe"
           style={{
+            width: "100%",
+            boxSizing: "border-box",
             padding: 12,
             borderRadius: 10,
             border: "1px solid #2a2a2a",
@@ -146,6 +148,8 @@ export default function GroupesPage() {
           value={zone}
           onChange={(e) => setZone(e.target.value)}
           style={{
+            width: "100%",
+            boxSizing: "border-box",
             padding: 12,
             borderRadius: 10,
             border: "1px solid #2a2a2a",

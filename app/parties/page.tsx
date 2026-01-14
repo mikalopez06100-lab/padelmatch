@@ -7,7 +7,9 @@ import { showNotification } from "../utils/notifications";
 import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 import { loadTerrains, addTerrainPersonnalise, type Terrain } from "@/lib/data/terrains";
-import { loadCurrentProfil } from "@/lib/data/auth";
+import { loadCurrentProfilSync } from "@/lib/data/auth";
+import { getParties, createPartie as createPartieFirestore, updatePartie as updatePartieFirestore, deletePartie as deletePartieFirestore, subscribeToParties } from "@/lib/firebase/firestore";
+import { getCurrentUser } from "@/lib/firebase/auth";
 
 type Groupe = {
   id: string;
@@ -167,50 +169,132 @@ export default function PartiesPage() {
     // Charger les terrains
     setTerrains(loadTerrains());
 
-    // ✅ Migration/réparation des anciennes données
-    const raw = load<any[]>(PARTIES_KEY, []);
-    const repaired: Partie[] = raw.map((p) => {
-      const orga = String(p.organisateurPseudo ?? "Organisateur");
+    // Charger les parties depuis Firestore
+    async function loadPartiesFromFirestore() {
+      try {
+        const partiesFirestore = await getParties();
+        // Convertir les parties Firestore au format local
+        const partiesConverties: Partie[] = partiesFirestore.map((p: any) => {
+          const orga = String(p.organisateurPseudo ?? "Organisateur");
+          const participants: Participant[] = Array.isArray(p.participants)
+            ? p.participants.map((x: any) => ({
+                pseudo: String(x?.pseudo ?? "Joueur"),
+                role: (x?.role === "organisateur" ? "organisateur" : "joueur") as Participant["role"],
+              }))
+            : [{ pseudo: orga, role: "organisateur" as const }];
+          const demandes: Demande[] = Array.isArray(p.demandes)
+            ? p.demandes.map((d: any) => ({
+                pseudo: String(d?.pseudo ?? "Candidat"),
+                createdAt: Number(d?.createdAt ?? Date.now()),
+              }))
+            : [];
+          return {
+            id: p.id ?? crypto.randomUUID(),
+            groupeId: String(p.groupeId ?? ""),
+            groupeNom: String(p.groupeNom ?? "Groupe"),
+            zone: String(p.zone ?? "Nice"),
+            dateISO: String(p.dateISO ?? ""),
+            format: (p.format === "Compétitif" || p.format === "Mixte" ? p.format : "Amical") as any,
+            placesTotal: Number(p.placesTotal ?? 4),
+            terrainId: p.terrainId ? String(p.terrainId) : undefined,
+            organisateurPseudo: orga,
+            participants,
+            visibilite: (p.visibilite === "profil" || p.visibilite === "groupe" || p.visibilite === "communaute"
+              ? p.visibilite
+              : (p.ouverteCommunaute ? "communaute" : "groupe")) as VisibilitePartie,
+            cibleProfilPseudo: p.cibleProfilPseudo ? String(p.cibleProfilPseudo) : undefined,
+            ouverteCommunaute: Boolean(p.ouverteCommunaute ?? false),
+            demandes,
+            createdAt: typeof p.createdAt === "number" ? p.createdAt : Date.now(),
+          };
+        });
+        setParties(partiesConverties);
+      } catch (error) {
+        console.error("Erreur lors du chargement des parties:", error);
+        // Fallback : charger depuis localStorage
+        const raw = load<any[]>(PARTIES_KEY, []);
+        const repaired: Partie[] = raw.map((p) => {
+          const orga = String(p.organisateurPseudo ?? "Organisateur");
+          const participants: Participant[] = Array.isArray(p.participants)
+            ? p.participants.map((x: any) => ({
+                pseudo: String(x?.pseudo ?? "Joueur"),
+                role: (x?.role === "organisateur" ? "organisateur" : "joueur") as Participant["role"],
+              }))
+            : [{ pseudo: orga, role: "organisateur" as const }];
+          const demandes: Demande[] = Array.isArray(p.demandes)
+            ? p.demandes.map((d: any) => ({
+                pseudo: String(d?.pseudo ?? "Candidat"),
+                createdAt: Number(d?.createdAt ?? Date.now()),
+              }))
+            : [];
+          return {
+            id: String(p.id ?? crypto.randomUUID()),
+            groupeId: String(p.groupeId ?? ""),
+            groupeNom: String(p.groupeNom ?? "Groupe"),
+            zone: String(p.zone ?? "Nice"),
+            dateISO: String(p.dateISO ?? ""),
+            format: (p.format === "Compétitif" || p.format === "Mixte" ? p.format : "Amical") as any,
+            placesTotal: Number(p.placesTotal ?? 4),
+            terrainId: p.terrainId ? String(p.terrainId) : undefined,
+            organisateurPseudo: orga,
+            participants,
+            visibilite: (p.visibilite === "profil" || p.visibilite === "groupe" || p.visibilite === "communaute"
+              ? p.visibilite
+              : (p.ouverteCommunaute ? "communaute" : "groupe")) as VisibilitePartie,
+            cibleProfilPseudo: p.cibleProfilPseudo ? String(p.cibleProfilPseudo) : undefined,
+            ouverteCommunaute: Boolean(p.ouverteCommunaute ?? false),
+            demandes,
+            createdAt: Number(p.createdAt ?? Date.now()),
+          };
+        });
+        setParties(repaired);
+      }
+    }
 
-      const participants: Participant[] = Array.isArray(p.participants)
-        ? p.participants.map((x: any) => ({
-            pseudo: String(x?.pseudo ?? "Joueur"),
-            role: (x?.role === "organisateur" ? "organisateur" : "joueur") as Participant["role"],
-          }))
-        : [{ pseudo: orga, role: "organisateur" as const }];
+    loadPartiesFromFirestore();
 
-      const demandes: Demande[] = Array.isArray(p.demandes)
-        ? p.demandes.map((d: any) => ({
-            pseudo: String(d?.pseudo ?? "Candidat"),
-            createdAt: Number(d?.createdAt ?? Date.now()),
-          }))
-        : [];
-
-      return {
-        id: String(p.id ?? crypto.randomUUID()),
-        groupeId: String(p.groupeId ?? ""),
-        groupeNom: String(p.groupeNom ?? "Groupe"),
-        zone: String(p.zone ?? "Nice"),
-        dateISO: String(p.dateISO ?? ""),
-        format: (p.format === "Compétitif" || p.format === "Mixte" ? p.format : "Amical") as any,
-        placesTotal: Number(p.placesTotal ?? 4),
-
-        organisateurPseudo: orga,
-        participants,
-
-        visibilite: (p.visibilite === "profil" || p.visibilite === "groupe" || p.visibilite === "communaute"
-          ? p.visibilite
-          : (p.ouverteCommunaute ? "communaute" : "groupe")) as VisibilitePartie,
-        cibleProfilPseudo: p.cibleProfilPseudo ? String(p.cibleProfilPseudo) : undefined,
-        ouverteCommunaute: Boolean(p.ouverteCommunaute ?? false), // DEPRECATED
-        demandes,
-
-        createdAt: Number(p.createdAt ?? Date.now()),
-      };
+    // S'abonner aux mises à jour en temps réel
+    const unsubscribe = subscribeToParties((partiesFirestore) => {
+      const partiesConverties: Partie[] = partiesFirestore.map((p: any) => {
+        const orga = String(p.organisateurPseudo ?? "Organisateur");
+        const participants: Participant[] = Array.isArray(p.participants)
+          ? p.participants.map((x: any) => ({
+              pseudo: String(x?.pseudo ?? "Joueur"),
+              role: (x?.role === "organisateur" ? "organisateur" : "joueur") as Participant["role"],
+            }))
+          : [{ pseudo: orga, role: "organisateur" as const }];
+        const demandes: Demande[] = Array.isArray(p.demandes)
+          ? p.demandes.map((d: any) => ({
+              pseudo: String(d?.pseudo ?? "Candidat"),
+              createdAt: Number(d?.createdAt ?? Date.now()),
+            }))
+          : [];
+        return {
+          id: p.id ?? crypto.randomUUID(),
+          groupeId: String(p.groupeId ?? ""),
+          groupeNom: String(p.groupeNom ?? "Groupe"),
+          zone: String(p.zone ?? "Nice"),
+          dateISO: String(p.dateISO ?? ""),
+          format: (p.format === "Compétitif" || p.format === "Mixte" ? p.format : "Amical") as any,
+          placesTotal: Number(p.placesTotal ?? 4),
+          terrainId: p.terrainId ? String(p.terrainId) : undefined,
+          organisateurPseudo: orga,
+          participants,
+          visibilite: (p.visibilite === "profil" || p.visibilite === "groupe" || p.visibilite === "communaute"
+            ? p.visibilite
+            : (p.ouverteCommunaute ? "communaute" : "groupe")) as VisibilitePartie,
+          cibleProfilPseudo: p.cibleProfilPseudo ? String(p.cibleProfilPseudo) : undefined,
+          ouverteCommunaute: Boolean(p.ouverteCommunaute ?? false),
+          demandes,
+          createdAt: typeof p.createdAt === "number" ? p.createdAt : Date.now(),
+        };
+      });
+      setParties(partiesConverties);
     });
 
-    setParties(repaired);
-    save(PARTIES_KEY, repaired);
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Recharger les profils globaux périodiquement pour avoir les dernières mises à jour
@@ -257,12 +341,30 @@ export default function PartiesPage() {
 
   function persist(next: Partie[]) {
     setParties(next);
+    // Sauvegarder dans localStorage pour compatibilité (fallback)
     save(PARTIES_KEY, next);
   }
 
-  function createPartie() {
+  async function updatePartieInFirestore(partieId: string, updates: Partial<Partie>) {
+    try {
+      await updatePartieFirestore(partieId, updates);
+      console.log("✅ Partie mise à jour dans Firestore:", partieId);
+    } catch (error: any) {
+      console.error("❌ Erreur lors de la mise à jour dans Firestore:", error);
+      console.error("Code d'erreur:", error.code);
+      console.error("Message:", error.message);
+      // Afficher une alerte pour informer l'utilisateur
+      if (error.code === "permission-denied") {
+        alert("Erreur : Permission refusée. Vérifiez les règles Firestore.");
+      } else {
+        alert(`Erreur lors de la sauvegarde : ${error.message}`);
+      }
+    }
+  }
+
+  async function createPartie() {
     // Vérifier si l'utilisateur est connecté
-    const profilConnecte = loadCurrentProfil();
+    const profilConnecte = loadCurrentProfilSync();
     if (!profilConnecte || !profilConnecte.pseudo || profilConnecte.pseudo === "Joueur") {
       setShowLoginModal(true);
       return;
@@ -277,9 +379,10 @@ export default function PartiesPage() {
     }
 
     const orgaPseudo = profilConnecte.pseudo; // Utiliser le pseudo du profil connecté
+    const user = getCurrentUser();
+    const organisateurId = user?.uid || null; // UID Firebase si disponible
 
-    const newPartie: Partie = {
-      id: crypto.randomUUID(),
+    const newPartie: Omit<Partie, "id"> = {
       groupeId: groupeSelectionne.id,
       groupeNom: groupeSelectionne.nom,
       zone: groupeSelectionne.zone,
@@ -289,6 +392,8 @@ export default function PartiesPage() {
       terrainId: terrainId || undefined,
 
       organisateurPseudo: orgaPseudo,
+      // @ts-ignore - Ajout temporaire pour les règles Firestore
+      organisateurId: organisateurId,
       participants: [{ pseudo: orgaPseudo, role: "organisateur" as const }],
 
       visibilite,
@@ -299,7 +404,27 @@ export default function PartiesPage() {
       createdAt: Date.now(),
     };
 
-    persist([newPartie, ...parties]);
+    try {
+      // Créer la partie dans Firestore
+      console.log("🔄 Création de la partie dans Firestore...");
+      const partieId = await createPartieFirestore(newPartie);
+      console.log("✅ Partie créée dans Firestore avec l'ID:", partieId);
+      // Ajouter localement avec l'ID retourné
+      persist([{ ...newPartie, id: partieId }, ...parties]);
+      alert("Partie créée avec succès ✅");
+    } catch (error: any) {
+      console.error("❌ Erreur lors de la création de la partie:", error);
+      console.error("Code d'erreur:", error.code);
+      console.error("Message:", error.message);
+      // Fallback : créer localement
+      const partieId = crypto.randomUUID();
+      persist([{ ...newPartie, id: partieId }, ...parties]);
+      if (error.code === "permission-denied") {
+        alert("⚠️ Erreur : Permission refusée par Firestore. La partie est sauvegardée localement uniquement. Vérifiez les règles Firestore.");
+      } else {
+        alert(`⚠️ Erreur lors de la sauvegarde dans Firestore : ${error.message}\nLa partie est sauvegardée localement uniquement.`);
+      }
+    }
 
     setDateISO("");
     setDatePart("");
@@ -332,7 +457,7 @@ export default function PartiesPage() {
     }
   }
 
-  function toggleOpen(id: string) {
+  async function toggleOpen(id: string) {
     const partie = parties.find((p) => p.id === id);
     if (!partie) return;
 
@@ -340,17 +465,23 @@ export default function PartiesPage() {
       partie.visibilite === "communaute" ? "groupe" : "communaute";
     const isOpening = nouvelleVisibilite === "communaute";
 
-    persist(
-      parties.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              visibilite: nouvelleVisibilite,
-              ouverteCommunaute: nouvelleVisibilite === "communaute", // DEPRECATED
-            }
-          : p
-      )
+    const updated = {
+      visibilite: nouvelleVisibilite,
+      ouverteCommunaute: nouvelleVisibilite === "communaute", // DEPRECATED
+    };
+
+    const updatedParties = parties.map((p) =>
+      p.id === id
+        ? {
+            ...p,
+            ...updated,
+          }
+        : p
     );
+    persist(updatedParties);
+
+    // Sauvegarder dans Firestore
+    await updatePartieInFirestore(id, updated);
 
     // Notification si ouverture à la communauté avec places disponibles
     if (isOpening && partie) {
@@ -376,39 +507,54 @@ export default function PartiesPage() {
     );
   }
 
-  function requestJoin(id: string) {
+  async function requestJoin(id: string) {
     const monPseudo = getMonPseudo();
 
-    persist(
-      parties.map((p) => {
-        if (p.id !== id) return p;
-        // Vérifier la visibilité : on ne peut rejoindre que si communaute ou si c'est pour notre profil
-        if (p.visibilite !== "communaute" && !(p.visibilite === "profil" && p.cibleProfilPseudo === monPseudo))
-          return p;
-        if (p.participants.length >= p.placesTotal) return p;
+    const updatedParties = parties.map((p) => {
+      if (p.id !== id) return p;
+      // Vérifier la visibilité : on ne peut rejoindre que si communaute ou si c'est pour notre profil
+      if (p.visibilite !== "communaute" && !(p.visibilite === "profil" && p.cibleProfilPseudo === monPseudo))
+        return p;
+      if (p.participants.length >= p.placesTotal) return p;
 
-        // Si déjà dedans ou déjà demandé, on ne refait pas
-        if (p.participants.some((x) => x.pseudo === monPseudo)) return p;
-        if (p.demandes.some((d) => d.pseudo === monPseudo)) return p;
+      // Si déjà dedans ou déjà demandé, on ne refait pas
+      if (p.participants.some((x) => x.pseudo === monPseudo)) return p;
+      if (p.demandes.some((d) => d.pseudo === monPseudo)) return p;
 
-        return { ...p, demandes: [...p.demandes, { pseudo: monPseudo, createdAt: Date.now() }] };
-      })
-    );
+      return { ...p, demandes: [...p.demandes, { pseudo: monPseudo, createdAt: Date.now() }] };
+    });
+    
+    persist(updatedParties);
+
+    // Sauvegarder dans Firestore
+    const partie = updatedParties.find((p) => p.id === id);
+    if (partie) {
+      await updatePartieInFirestore(id, { demandes: partie.demandes });
+    }
   }
 
-  function acceptRequest(matchId: string, pseudo: string) {
+  async function acceptRequest(matchId: string, pseudo: string) {
     const partie = parties.find((p) => p.id === matchId);
-    persist(
-      parties.map((p) => {
-        if (p.id !== matchId) return p;
-        if (p.participants.length >= p.placesTotal) return p;
+    const updatedParties = parties.map((p) => {
+      if (p.id !== matchId) return p;
+      if (p.participants.length >= p.placesTotal) return p;
 
-        const demandes = p.demandes.filter((d) => d.pseudo !== pseudo);
-        const participants = [...p.participants, { pseudo, role: "joueur" as const }];
+      const demandes = p.demandes.filter((d) => d.pseudo !== pseudo);
+      const participants = [...p.participants, { pseudo, role: "joueur" as const }];
 
-        return { ...p, demandes, participants };
-      })
-    );
+      return { ...p, demandes, participants };
+    });
+    
+    persist(updatedParties);
+
+    // Sauvegarder dans Firestore
+    const updatedPartie = updatedParties.find((p) => p.id === matchId);
+    if (updatedPartie) {
+      await updatePartieInFirestore(matchId, {
+        demandes: updatedPartie.demandes,
+        participants: updatedPartie.participants,
+      });
+    }
 
     // Notification pour l'organisateur (confirmation)
     if (partie) {
@@ -422,12 +568,28 @@ export default function PartiesPage() {
     // car les données sont locales. Ce sera fait dans une prochaine version.
   }
 
-  function removePartie(id: string) {
+  async function removePartie(id: string) {
+    try {
+      await deletePartieFirestore(id);
+    } catch (error) {
+      console.error("Erreur lors de la suppression dans Firestore:", error);
+    }
     persist(parties.filter((p) => p.id !== id));
   }
 
   return (
-    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "20px", paddingBottom: 80 }}>
+    <div
+      style={{
+        background: "#000",
+        color: "#fff",
+        minHeight: "100vh",
+        padding: "16px",
+        paddingBottom: 80,
+        boxSizing: "border-box",
+        maxWidth: "100%",
+        overflowX: "hidden",
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, marginBottom: 8, color: "#fff" }}>🎾 Mes parties</h1>
@@ -490,12 +652,14 @@ export default function PartiesPage() {
           maxWidth: "100%",
         }}
       >
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: 8, maxWidth: "100%" }}>
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Groupe</label>
           <select
             value={groupeId}
             onChange={(e) => setGroupeId(e.target.value)}
             style={{
+              width: "100%",
+              boxSizing: "border-box",
               padding: 10,
               borderRadius: 10,
               border: "1px solid #2a2a2a",
@@ -516,9 +680,9 @@ export default function PartiesPage() {
           </select>
         </div>
 
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: 8, maxWidth: "100%" }}>
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Date & heure</label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, width: "100%" }}>
             <input
               type="date"
               value={datePart}
@@ -527,12 +691,15 @@ export default function PartiesPage() {
                 updateDateISO(e.target.value, heurePart, minutesPart);
               }}
               style={{
+                width: "100%",
+                boxSizing: "border-box",
                 padding: 10,
                 borderRadius: 10,
                 border: "1px solid #2a2a2a",
                 background: "#141414",
                 color: "#fff",
                 fontSize: 14,
+                minWidth: 0,
               }}
             />
             <select
@@ -542,6 +709,7 @@ export default function PartiesPage() {
                 updateDateISO(datePart, e.target.value, minutesPart);
               }}
               style={{
+                boxSizing: "border-box",
                 padding: 10,
                 borderRadius: 10,
                 border: "1px solid #2a2a2a",
@@ -549,6 +717,7 @@ export default function PartiesPage() {
                 color: "#fff",
                 fontSize: 14,
                 minWidth: 70,
+                maxWidth: 80,
               }}
             >
               <option value="" style={{ background: "#141414", color: "#fff" }}>
@@ -570,6 +739,7 @@ export default function PartiesPage() {
                 updateDateISO(datePart, heurePart, e.target.value);
               }}
               style={{
+                boxSizing: "border-box",
                 padding: 10,
                 borderRadius: 10,
                 border: "1px solid #2a2a2a",
@@ -577,6 +747,7 @@ export default function PartiesPage() {
                 color: "#fff",
                 fontSize: 14,
                 minWidth: 70,
+                maxWidth: 80,
               }}
             >
               <option value="00" style={{ background: "#141414", color: "#fff" }}>
@@ -589,12 +760,14 @@ export default function PartiesPage() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: 8, maxWidth: "100%" }}>
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Format</label>
           <select
             value={format}
             onChange={(e) => setFormat(e.target.value as any)}
             style={{
+              width: "100%",
+              boxSizing: "border-box",
               padding: 10,
               borderRadius: 10,
               border: "1px solid #2a2a2a",
@@ -609,7 +782,7 @@ export default function PartiesPage() {
           </select>
         </div>
 
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: 8, maxWidth: "100%" }}>
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Places</label>
           <input
             type="number"
@@ -618,6 +791,8 @@ export default function PartiesPage() {
             value={placesTotal}
             onChange={(e) => setPlacesTotal(Number(e.target.value))}
             style={{
+              width: "100%",
+              boxSizing: "border-box",
               padding: 10,
               borderRadius: 10,
               border: "1px solid #2a2a2a",
@@ -629,16 +804,17 @@ export default function PartiesPage() {
         </div>
 
         {/* Sélection de terrain */}
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: 8, maxWidth: "100%" }}>
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Terrain</label>
           
           {/* Onglets */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8, width: "100%", maxWidth: "100%", flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => setTerrainTab("select")}
               style={{
                 flex: 1,
+                minWidth: 0,
                 padding: "8px 12px",
                 borderRadius: 8,
                 border: "1px solid #2a2a2a",
@@ -656,6 +832,7 @@ export default function PartiesPage() {
               onClick={() => setTerrainTab("add")}
               style={{
                 flex: 1,
+                minWidth: 0,
                 padding: "8px 12px",
                 borderRadius: 8,
                 border: "1px solid #2a2a2a",
@@ -676,6 +853,8 @@ export default function PartiesPage() {
               value={terrainId}
               onChange={(e) => setTerrainId(e.target.value)}
               style={{
+                width: "100%",
+                boxSizing: "border-box",
                 padding: 10,
                 borderRadius: 10,
                 border: "1px solid #2a2a2a",
@@ -859,7 +1038,7 @@ export default function PartiesPage() {
                     {p.terrainId && (() => {
                       const terrain = terrains.find(t => t.id === p.terrainId);
                       return terrain ? (
-                        <div style={{ fontSize: 13, opacity: 0.7, color: "#10b981", marginTop: 4 }}>
+                        <div style={{ fontSize: 13, opacity: 0.9, color: "#10b981", marginTop: 6, fontWeight: 500 }}>
                           🎾 {terrain.nom} — {terrain.ville}
                         </div>
                       ) : null;

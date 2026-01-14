@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function : vérifier si l'utilisateur est authentifié
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function : obtenir le pseudo de l'utilisateur connecté
+    function getUserPseudo() {
+      return isAuthenticated() ? 
+        get(/databases/$(database)/documents/profils/$(request.auth.uid)).data.pseudo : 
+        null;
+    }
+    
+    // ===== PROFILS =====
+    match /profils/{userId} {
+      // Lecture : publique (pour voir les profils des autres joueurs)
+      allow read: if true;
+      
+      // Création : uniquement par l'utilisateur authentifié pour son propre profil
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == userId &&
+                       request.resource.data.keys().hasAll(['pseudo', 'email', 'niveau']) &&
+                       request.resource.data.pseudo is string &&
+                       request.resource.data.email is string;
+      
+      // Mise à jour : uniquement par le propriétaire
+      // L'email ne peut pas être modifié
+      allow update: if isAuthenticated() && 
+                       request.auth.uid == userId &&
+                       request.resource.data.diff(resource.data).unchangedKeys().hasAll(['email']) &&
+                       request.resource.data.pseudo is string;
+      
+      // Suppression : uniquement par le propriétaire
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ===== PARTIES =====
+    match /parties/{partieId} {
+      // Lecture : publique (pour voir les parties disponibles)
+      allow read: if true;
+      
+      // Création : uniquement par utilisateurs authentifiés
+      // Le pseudo de l'organisateur doit correspondre au profil de l'utilisateur
+      allow create: if isAuthenticated() &&
+                       request.resource.data.keys().hasAll(['groupeId', 'groupeNom', 'zone', 'dateISO', 'format', 'placesTotal', 'organisateurPseudo', 'participants', 'visibilite', 'createdAt']) &&
+                       request.resource.data.organisateurPseudo is string &&
+                       request.resource.data.participants is list &&
+                       request.resource.data.participants.size() > 0 &&
+                       request.resource.data.organisateurPseudo == getUserPseudo();
+      
+      // Mise à jour : 
+      // - Par l'organisateur (vérifié via le pseudo)
+      // - Pour mettre à jour les participants/demandes (par n'importe quel utilisateur authentifié)
+      allow update: if isAuthenticated() && (
+                       // L'organisateur peut tout modifier
+                       (resource.data.organisateurPseudo != null && 
+                        resource.data.organisateurPseudo == getUserPseudo()) ||
+                       // Mise à jour des participants/demandes uniquement
+                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'demandes']))
+                     );
+      
+      // Suppression : uniquement par l'organisateur
+      allow delete: if isAuthenticated() &&
+                       resource.data.organisateurPseudo != null &&
+                       resource.data.organisateurPseudo == getUserPseudo();
+    }
+    
+    // ===== GROUPES =====
+    match /groupes/{groupeId} {
+      // Lecture : publique
+      allow read: if true;
+      
+      // Création : uniquement par utilisateurs authentifiés
+      allow create: if isAuthenticated() &&
+                       request.resource.data.keys().hasAll(['nom', 'zone', 'createdAt']) &&
+                       request.resource.data.nom is string &&
+                       request.resource.data.zone is string;
+      
+      // Mise à jour : uniquement par utilisateurs authentifiés
+      allow update: if isAuthenticated();
+      
+      // Suppression : uniquement par utilisateurs authentifiés
+      allow delete: if isAuthenticated();
+    }
+    
+    // ===== MESSAGES =====
+    match /messages/{messageId} {
+      // Lecture : uniquement par utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Création : uniquement par utilisateurs authentifiés
+      // Le pseudo doit correspondre au profil de l'utilisateur
+      allow create: if isAuthenticated() &&
+                       request.resource.data.keys().hasAll(['partieId', 'pseudo', 'contenu', 'createdAt']) &&
+                       request.resource.data.pseudo is string &&
+                       request.resource.data.contenu is string &&
+                       request.resource.data.pseudo == getUserPseudo();
+      
+      // Mise à jour : non autorisée (messages immutables)
+      allow update: if false;
+      
+      // Suppression : uniquement par l'auteur du message
+      allow delete: if isAuthenticated() &&
+                       resource.data.pseudo == getUserPseudo();
+    }
+  }
+}

@@ -20,17 +20,21 @@ export default function Home() {
   const [pseudo, setPseudo] = useState("");
   const [niveau, setNiveau] = useState<Niveau>("Débutant");
   const [newPassword, setNewPassword] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Si un profil existe déjà, rediriger vers les parties
-    const existing = loadCurrentProfil();
-    if (existing) {
-      router.push("/parties");
-    }
+    loadCurrentProfil().then((existing) => {
+      if (existing) {
+        router.push("/parties");
+      }
+    });
   }, [router]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (loading) return; // Éviter les doubles clics
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
@@ -42,56 +46,81 @@ export default function Home() {
       return;
     }
 
-    if (mode === "login") {
-      // Login : authentifier avec email/mot de passe
-      const profil = authenticate(cleanEmail, cleanPassword);
-      if (profil) {
-        router.push("/parties");
-        router.refresh();
+    setLoading(true);
+
+    try {
+      if (mode === "login") {
+        // Login : authentifier avec email/mot de passe
+        const profil = await authenticate(cleanEmail, cleanPassword);
+        if (profil) {
+          router.push("/parties");
+          router.refresh();
+        } else {
+          alert("Email ou mot de passe incorrect.");
+        }
+      } else if (mode === "forgot") {
+        // Réinitialisation de mot de passe
+        const success = await resetPassword(cleanEmail);
+        if (success) {
+          alert("Un email de réinitialisation a été envoyé à votre adresse. Vérifiez votre boîte mail.");
+          setMode("login");
+        } else {
+          alert("Aucun compte trouvé avec cet email.");
+        }
       } else {
+        // Inscription : créer un nouveau profil
+        if (cleanPseudo.length < 2) {
+          alert("Pseudo trop court (min 2 caractères).");
+          setLoading(false);
+          return;
+        }
+
+        if (cleanPassword.length < 6) {
+          alert("Le mot de passe doit contenir au moins 6 caractères.");
+          setLoading(false);
+          return;
+        }
+
+        // Vérifier si l'email existe déjà (fallback)
+        if (emailExists(cleanEmail)) {
+          alert("Cet email est déjà utilisé. Connectez-vous ou utilisez un autre email.");
+          setMode("login");
+          setLoading(false);
+          return;
+        }
+
+        try {
+          await createProfil({
+            pseudo: cleanPseudo,
+            email: cleanEmail,
+            password: cleanPassword,
+            niveau,
+          });
+          alert("Inscription réussie ✅\nBienvenue sur PadelMatch !");
+          router.push("/parties");
+          router.refresh();
+        } catch (error: any) {
+          if (error.code === "auth/email-already-in-use") {
+            alert("Cet email est déjà utilisé. Connectez-vous ou utilisez un autre email.");
+            setMode("login");
+          } else {
+            alert("Erreur lors de l'inscription. Veuillez réessayer.");
+            console.error(error);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Erreur:", error);
+      if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
         alert("Email ou mot de passe incorrect.");
-      }
-    } else if (mode === "forgot") {
-      // Réinitialisation de mot de passe
-      const generatedPassword = resetPassword(cleanEmail);
-      if (generatedPassword) {
-        setNewPassword(generatedPassword);
-      } else {
-        alert("Aucun compte trouvé avec cet email.");
-      }
-    } else {
-      // Inscription : créer un nouveau profil
-      if (cleanPseudo.length < 2) {
-        alert("Pseudo trop court (min 2 caractères).");
-        return;
-      }
-
-      if (cleanPassword.length < 6) {
-        alert("Le mot de passe doit contenir au moins 6 caractères.");
-        return;
-      }
-
-      // Vérifier si l'email existe déjà
-      if (emailExists(cleanEmail)) {
-        alert("Cet email est déjà utilisé. Connectez-vous ou utilisez un autre email.");
+      } else if (error.code === "auth/email-already-in-use") {
+        alert("Cet email est déjà utilisé. Connectez-vous.");
         setMode("login");
-        return;
+      } else {
+        alert("Une erreur est survenue. Veuillez réessayer.");
       }
-
-      try {
-        createProfil({
-          pseudo: cleanPseudo,
-          email: cleanEmail,
-          password: cleanPassword,
-          niveau,
-        });
-        alert("Inscription réussie ✅\nBienvenue sur PadelMatch !");
-        router.push("/parties");
-        router.refresh();
-      } catch (error) {
-        alert("Erreur lors de l'inscription. Veuillez réessayer.");
-        console.error(error);
-      }
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -105,7 +134,7 @@ export default function Home() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "20px",
+        padding: "16px",
       }}
     >
       <Logo size="large" showTagline={true} />
@@ -117,8 +146,9 @@ export default function Home() {
           marginTop: 40,
           background: "#141414",
           borderRadius: 16,
-          padding: 32,
+          padding: "24px 20px",
           border: "1px solid #2a2a2a",
+          boxSizing: "border-box",
         }}
       >
         {mode !== "forgot" && (
@@ -206,6 +236,8 @@ export default function Home() {
                 placeholder="votre@email.com"
                 required
                 style={{
+                  width: "100%",
+                  boxSizing: "border-box",
                   padding: 14,
                   borderRadius: 10,
                   border: "1px solid #2a2a2a",
@@ -263,6 +295,8 @@ export default function Home() {
                   required
                   minLength={6}
                   style={{
+                    width: "100%",
+                    boxSizing: "border-box",
                     padding: 14,
                     borderRadius: 10,
                     border: "1px solid #2a2a2a",
@@ -295,6 +329,8 @@ export default function Home() {
                     readOnly
                     style={{
                       flex: 1,
+                      minWidth: 0,
+                      boxSizing: "border-box",
                       padding: 12,
                       borderRadius: 8,
                       border: "1px solid #2a2a2a",
@@ -365,6 +401,8 @@ export default function Home() {
                     required
                     minLength={2}
                     style={{
+                      width: "100%",
+                      boxSizing: "border-box",
                       padding: 14,
                       borderRadius: 10,
                       border: "1px solid #2a2a2a",
@@ -385,6 +423,8 @@ export default function Home() {
                     onChange={(e) => setNiveau(e.target.value as Niveau)}
                     required
                     style={{
+                      width: "100%",
+                      boxSizing: "border-box",
                       padding: 14,
                       borderRadius: 10,
                       border: "1px solid #2a2a2a",
@@ -408,19 +448,27 @@ export default function Home() {
             {mode !== "forgot" || !newPassword ? (
               <button
                 type="submit"
+                disabled={loading}
                 style={{
                   marginTop: 8,
                   padding: 14,
                   borderRadius: 10,
                   border: "none",
-                  background: "#10b981",
+                  background: loading ? "#2a2a2a" : "#10b981",
                   color: "#fff",
                   fontWeight: 600,
                   fontSize: 15,
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.6 : 1,
                 }}
               >
-                {mode === "login" ? "Se connecter" : mode === "inscription" ? "S'inscrire" : "Générer un nouveau mot de passe"}
+                {loading
+                  ? "Chargement..."
+                  : mode === "login"
+                    ? "Se connecter"
+                    : mode === "inscription"
+                      ? "S'inscrire"
+                      : "Envoyer l'email de réinitialisation"}
               </button>
             ) : null}
           </div>

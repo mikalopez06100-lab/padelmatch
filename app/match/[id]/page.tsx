@@ -4,6 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDateLong, formatTimeShort } from "../../utils/date";
+import { loadProfilsGlobaux, getProfilGlobalByPseudo } from "@/lib/data/profils-globaux";
+import type { ProfilGlobal } from "@/lib/data/profils-globaux";
+import { loadTerrains, type Terrain } from "@/lib/data/terrains";
 
 type Participant = {
   pseudo: string;
@@ -18,6 +21,7 @@ type Partie = {
   dateISO: string;
   format: "Amical" | "Compétitif" | "Mixte";
   placesTotal: number;
+  terrainId?: string;
   organisateurPseudo: string;
   participants: Participant[];
   ouverteCommunaute: boolean;
@@ -125,6 +129,8 @@ export default function MatchPage() {
   const [isOrganisateur, setIsOrganisateur] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState("");
+  const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
+  const [terrains, setTerrains] = useState<Terrain[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -145,6 +151,21 @@ export default function MatchPage() {
     const loadedMessages = loadMessages(matchId);
     setMessages(loadedMessages);
   }, [matchId]);
+
+  // Charger les profils globaux pour afficher les photos
+  useEffect(() => {
+    setProfilsGlobaux(loadProfilsGlobaux());
+    // Recharger périodiquement pour avoir les dernières photos
+    const interval = setInterval(() => {
+      setProfilsGlobaux(loadProfilsGlobaux());
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Charger les terrains
+  useEffect(() => {
+    setTerrains(loadTerrains());
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -307,7 +328,7 @@ export default function MatchPage() {
         style={{
           display: "flex",
           alignItems: "center",
-          padding: "16px 20px",
+          padding: "16px",
           borderBottom: "1px solid #1f1f1f",
         }}
       >
@@ -364,6 +385,15 @@ export default function MatchPage() {
               <span>📅</span>
               <span>{formatDateLong(partie.dateISO)}</span>
             </div>
+            {partie.terrainId && (() => {
+              const terrain = terrains.find(t => t.id === partie.terrainId);
+              return terrain ? (
+                <div style={{ fontSize: 14, opacity: 0.9, display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span>🎾</span>
+                  <span>{terrain.nom} — {terrain.ville}</span>
+                </div>
+              ) : null;
+            })()}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
               <div
                 style={{
@@ -386,16 +416,20 @@ export default function MatchPage() {
       </div>
 
       {/* Slots de joueurs */}
-      <div style={{ padding: "0 20px", marginBottom: 20 }}>
+      <div style={{ padding: "0 16px", marginBottom: 20 }}>
         <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
-          {partie.participants.map((p, index) => (
+          {partie.participants.map((p, index) => {
+            const profilParticipant = getProfilGlobalByPseudo(p.pseudo);
+            const photoUrl = profilParticipant?.photoUrl;
+            return (
             <div key={index} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 80 }}>
               <div
                 style={{
                   width: 60,
                   height: 60,
                   borderRadius: "50%",
-                  background: getAvatarColor(p.pseudo),
+                  overflow: "hidden",
+                  background: photoUrl ? "transparent" : getAvatarColor(p.pseudo),
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -404,7 +438,15 @@ export default function MatchPage() {
                   fontSize: 20,
                 }}
               >
-                {getInitials(p.pseudo)}
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt={`Photo de ${p.pseudo}`}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  getInitials(p.pseudo)
+                )}
               </div>
               <div style={{ fontSize: 12, textAlign: "center" }}>
                 <Link
@@ -428,7 +470,8 @@ export default function MatchPage() {
                 <div style={{ fontSize: 11, opacity: 0.7 }}>{niveauAffiche}</div>
               </div>
             </div>
-          ))}
+          );
+          })}
           {slotsLibres.map((_, index) => (
             <div key={`libre-${index}`} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 80 }}>
               <div
@@ -455,7 +498,7 @@ export default function MatchPage() {
 
       {/* Barre d'action */}
       {!complete && !hasDemande && (
-        <div style={{ padding: "0 20px", marginBottom: 20 }}>
+        <div style={{ padding: "0 16px", marginBottom: 20 }}>
           <div
             style={{
               background: "#1f1f1f",
@@ -490,7 +533,7 @@ export default function MatchPage() {
       )}
 
       {isParticipant && (
-        <div style={{ padding: "0 20px", marginBottom: 20 }}>
+        <div style={{ padding: "0 16px", marginBottom: 20 }}>
           <div
             style={{
               background: "#1f1f1f",
@@ -509,10 +552,13 @@ export default function MatchPage() {
 
       {/* Section Organisateur (demandes en attente) */}
       {isOrganisateur && partie.demandes.length > 0 && (
-        <div style={{ padding: "0 20px", marginBottom: 20 }}>
+        <div style={{ padding: "0 16px", marginBottom: 20 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Organisateur</h2>
           <div style={{ display: "grid", gap: 12 }}>
-            {partie.demandes.map((demande, index) => (
+            {partie.demandes.map((demande, index) => {
+              const profilDemande = getProfilGlobalByPseudo(demande.pseudo);
+              const photoUrlDemande = profilDemande?.photoUrl;
+              return (
               <div
                 key={index}
                 style={{
@@ -529,7 +575,8 @@ export default function MatchPage() {
                     width: 50,
                     height: 50,
                     borderRadius: "50%",
-                    background: getAvatarColor(demande.pseudo),
+                    overflow: "hidden",
+                    background: photoUrlDemande ? "transparent" : getAvatarColor(demande.pseudo),
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -538,7 +585,15 @@ export default function MatchPage() {
                     fontSize: 18,
                   }}
                 >
-                  {getInitials(demande.pseudo)}
+                  {photoUrlDemande ? (
+                    <img
+                      src={photoUrlDemande}
+                      alt={`Photo de ${demande.pseudo}`}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    getInitials(demande.pseudo)
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <Link
@@ -579,14 +634,15 @@ export default function MatchPage() {
                   Valider
                 </button>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       )}
 
       {/* Chat - uniquement pour les participants */}
       {isParticipant && (
-        <div style={{ padding: "0 20px", marginBottom: 20 }}>
+        <div style={{ padding: "0 16px", marginBottom: 20 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Chat du match</h2>
         <div
           style={{
@@ -688,6 +744,8 @@ export default function MatchPage() {
               placeholder="Écrire un message..."
               style={{
                 flex: 1,
+                minWidth: 0,
+                boxSizing: "border-box",
                 padding: "10px 12px",
                 borderRadius: 20,
                 border: "1px solid #2a2a2a",

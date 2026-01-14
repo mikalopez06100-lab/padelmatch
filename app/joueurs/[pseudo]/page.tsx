@@ -6,7 +6,7 @@ import { getProfilGlobalByPseudo } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 import { calculateMatchStats } from "@/lib/data/stats";
 import type { MatchStats } from "@/lib/data/stats";
-import { loadCurrentProfil } from "@/lib/data/auth";
+import { loadCurrentProfilSync } from "@/lib/data/auth";
 
 function getInitials(pseudo: string): string {
   return pseudo
@@ -57,13 +57,13 @@ export default function JoueurProfilPage() {
     setStats(statistiques);
 
     // Vérifier si c'est le profil de l'utilisateur connecté
-    const currentProfil = loadCurrentProfil();
+    const currentProfil = loadCurrentProfilSync();
     setIsCurrentUser(currentProfil?.pseudo.toLowerCase() === pseudo.toLowerCase());
   }, [pseudo, router]);
 
   if (!profil || !stats) {
     return (
-      <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "20px", paddingBottom: 80 }}>
+      <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
         <div style={{ textAlign: "center", padding: 40 }}>
           <p style={{ color: "#fff", fontSize: 16 }}>Chargement...</p>
         </div>
@@ -72,7 +72,7 @@ export default function JoueurProfilPage() {
   }
 
   return (
-    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "20px", paddingBottom: 80 }}>
+      <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
       <button
         onClick={() => router.back()}
         style={{
