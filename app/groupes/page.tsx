@@ -1,84 +1,86 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
-import type { ProfilGlobal } from "@/lib/data/profils-globaux";
-
-type Groupe = {
-  id: string;
-  nom: string;
-  zone: string;
-  membres: string[]; // Pseudos des membres
-  createdAt: number;
-};
-
-const STORAGE_KEY = "padelmatch_groupes_v1";
-
-function loadGroupes(): Groupe[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    // Migration : ajouter membres si absent
-    return parsed.map((g: any) => ({
-      ...g,
-      membres: Array.isArray(g.membres) ? g.membres : [],
-    }));
-  } catch {
-    return [];
-  }
-}
-
-function saveGroupes(groupes: Groupe[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(groupes));
-}
+import { getAllProfils } from "@/lib/firebase/firestore";
+import type { Profil } from "@/lib/types";
+import type { Groupe } from "@/lib/types";
+import { getGroupes, createGroupe as createGroupeFirestore, updateGroupe as updateGroupeFirestore, deleteGroupe as deleteGroupeFirestore } from "@/lib/firebase/firestore";
 
 export default function GroupesPage() {
   const [groupes, setGroupes] = useState<Groupe[]>([]);
+  const [loading, setLoading] = useState(true);
   const [nom, setNom] = useState("");
   const [zone, setZone] = useState("Nice");
   const [membresSelectionnes, setMembresSelectionnes] = useState<string[]>([]);
   const [editingGroupeId, setEditingGroupeId] = useState<string | null>(null);
-  const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
+  const [profils, setProfils] = useState<Profil[]>([]);
 
   useEffect(() => {
-    setGroupes(loadGroupes());
-    setProfilsGlobaux(loadProfilsGlobaux());
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [groupesData, profilsData] = await Promise.all([
+          getGroupes(),
+          getAllProfils(),
+        ]);
+        setGroupes(groupesData);
+        setProfils(profilsData);
+      } catch (error) {
+        console.error("Erreur lors du chargement:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
   }, []);
 
-  function createGroupe() {
+  async function handleCreateGroupe() {
     const cleanName = nom.trim();
     if (cleanName.length < 2) return;
 
-    const newGroupe: Groupe = {
-      id: crypto.randomUUID(),
-      nom: cleanName,
-      zone,
-      membres: membresSelectionnes,
-      createdAt: Date.now(),
-    };
-
-    const next = [newGroupe, ...groupes];
-    setGroupes(next);
-    saveGroupes(next);
-
-    setNom("");
-    setZone("Nice");
-    setMembresSelectionnes([]);
+    try {
+      const groupeId = await createGroupeFirestore({
+        nom: cleanName,
+        zone,
+        membres: membresSelectionnes,
+      });
+      // Recharger les groupes
+      const groupesData = await getGroupes();
+      setGroupes(groupesData);
+      setNom("");
+      setZone("Nice");
+      setMembresSelectionnes([]);
+    } catch (error) {
+      console.error("Erreur lors de la création du groupe:", error);
+      alert("Erreur lors de la création du groupe");
+    }
   }
 
-  function updateGroupeMembres(id: string, nouveauxMembres: string[]) {
-    const next = groupes.map((g) => (g.id === id ? { ...g, membres: nouveauxMembres } : g));
-    setGroupes(next);
-    saveGroupes(next);
-    setEditingGroupeId(null);
+  async function handleUpdateGroupeMembres(id: string, nouveauxMembres: string[]) {
+    try {
+      await updateGroupeFirestore(id, { membres: nouveauxMembres });
+      // Recharger les groupes
+      const groupesData = await getGroupes();
+      setGroupes(groupesData);
+      setEditingGroupeId(null);
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour du groupe:", error);
+      alert("Erreur lors de la mise à jour du groupe");
+    }
   }
 
-  function removeGroupe(id: string) {
-    const next = groupes.filter((g) => g.id !== id);
-    setGroupes(next);
-    saveGroupes(next);
+  async function handleRemoveGroupe(id: string) {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce groupe ?")) return;
+
+    try {
+      await deleteGroupeFirestore(id);
+      // Recharger les groupes
+      const groupesData = await getGroupes();
+      setGroupes(groupesData);
+    } catch (error) {
+      console.error("Erreur lors de la suppression du groupe:", error);
+      alert("Erreur lors de la suppression du groupe");
+    }
   }
 
   function toggleMembre(pseudo: string) {
@@ -93,16 +95,18 @@ export default function GroupesPage() {
     const nouveauxMembres = membresActuels.includes(pseudo)
       ? membresActuels.filter((m) => m !== pseudo)
       : [...membresActuels, pseudo];
-    updateGroupeMembres(groupeId, nouveauxMembres);
+    handleUpdateGroupeMembres(groupeId, nouveauxMembres);
   }
 
-  // Recharger les profils globaux périodiquement pour avoir les dernières mises à jour
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProfilsGlobaux(loadProfilsGlobaux());
-    }, 2000); // Recharger toutes les 2 secondes
-    return () => clearInterval(interval);
-  }, []);
+  if (loading) {
+    return (
+      <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <p style={{ color: "#fff", fontSize: 16 }}>Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
@@ -139,7 +143,7 @@ export default function GroupesPage() {
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              createGroupe();
+              handleCreateGroupe();
             }
           }}
         />
@@ -181,12 +185,12 @@ export default function GroupesPage() {
               gap: 8,
             }}
           >
-            {profilsGlobaux.length === 0 ? (
+            {profils.length === 0 ? (
               <div style={{ fontSize: 13, opacity: 0.6, color: "#fff", textAlign: "center", padding: 12 }}>
                 Aucun profil disponible. Créez des profils via l'inscription pour les voir ici.
               </div>
             ) : (
-              profilsGlobaux.map((p) => (
+              profils.map((p) => (
                 <label
                   key={p.pseudo}
                   style={{
@@ -228,7 +232,7 @@ export default function GroupesPage() {
         </div>
 
         <button
-          onClick={createGroupe}
+          onClick={handleCreateGroupe}
           style={{
             padding: "12px 16px",
             borderRadius: 10,
@@ -271,7 +275,7 @@ export default function GroupesPage() {
                   <div style={{ flex: 1, minWidth: 150 }}>
                     <div style={{ fontWeight: 600, color: "#fff", fontSize: 16, marginBottom: 4 }}>{g.nom}</div>
                     <div style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>{g.zone}</div>
-                    {g.membres.length > 0 && (
+                    {g.membres && g.membres.length > 0 && (
                       <div style={{ fontSize: 13, opacity: 0.8, color: "#fff", marginTop: 8 }}>
                         <div style={{ marginBottom: 4 }}>👥 Membres ({g.membres.length}) :</div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -311,7 +315,7 @@ export default function GroupesPage() {
                       {isEditing ? "✕ Annuler" : "✏️ Modifier"}
                     </button>
                     <button
-                      onClick={() => removeGroupe(g.id)}
+                      onClick={() => handleRemoveGroupe(g.id)}
                       style={{
                         padding: "8px 12px",
                         borderRadius: 8,
@@ -343,12 +347,12 @@ export default function GroupesPage() {
                     <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 4 }}>
                       Sélectionner les membres :
                     </div>
-                    {profilsGlobaux.length === 0 ? (
+                    {profils.length === 0 ? (
                       <div style={{ fontSize: 13, opacity: 0.6, color: "#fff", textAlign: "center", padding: 12 }}>
                         Aucun profil disponible.
                       </div>
                     ) : (
-                      profilsGlobaux.map((p) => (
+                      profils.map((p) => (
                         <label
                           key={p.pseudo}
                           style={{
@@ -358,13 +362,13 @@ export default function GroupesPage() {
                             cursor: "pointer",
                             padding: 8,
                             borderRadius: 8,
-                            background: g.membres.includes(p.pseudo) ? "#1f1f1f" : "transparent",
+                            background: (g.membres || []).includes(p.pseudo) ? "#1f1f1f" : "transparent",
                           }}
                         >
                           <input
                             type="checkbox"
-                            checked={g.membres.includes(p.pseudo)}
-                            onChange={() => toggleMembreEdit(g.id, p.pseudo, g.membres)}
+                            checked={(g.membres || []).includes(p.pseudo)}
+                            onChange={() => toggleMembreEdit(g.id, p.pseudo, g.membres || [])}
                             style={{
                               width: 18,
                               height: 18,

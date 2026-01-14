@@ -9,7 +9,8 @@ service cloud.firestore {
     
     // Helper function : obtenir le pseudo de l'utilisateur connecté
     function getUserPseudo() {
-      return isAuthenticated() ? 
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/profils/$(request.auth.uid)) ? 
         get(/databases/$(database)/documents/profils/$(request.auth.uid)).data.pseudo : 
         null;
     }

@@ -8,7 +8,7 @@ import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 import { loadTerrains, addTerrainPersonnalise, type Terrain } from "@/lib/data/terrains";
 import { loadCurrentProfilSync } from "@/lib/data/auth";
-import { getParties, createPartie as createPartieFirestore, updatePartie as updatePartieFirestore, deletePartie as deletePartieFirestore, subscribeToParties } from "@/lib/firebase/firestore";
+import { getParties, createPartie as createPartieFirestore, updatePartie as updatePartieFirestore, deletePartie as deletePartieFirestore, subscribeToParties, getGroupes } from "@/lib/firebase/firestore";
 import { getCurrentUser } from "@/lib/firebase/auth";
 
 type Groupe = {
@@ -156,9 +156,20 @@ export default function PartiesPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
-    const gs = load<Groupe[]>(GROUPES_KEY, []);
-    setGroupes(gs);
-    setGroupeId(gs[0]?.id ?? "");
+    async function loadGroupesFromFirestore() {
+      try {
+        const groupesData = await getGroupes();
+        setGroupes(groupesData);
+        setGroupeId(groupesData[0]?.id ?? "");
+      } catch (error) {
+        console.error("Erreur lors du chargement des groupes:", error);
+        // Fallback : charger depuis localStorage
+        const gs = load<Groupe[]>(GROUPES_KEY, []);
+        setGroupes(gs);
+        setGroupeId(gs[0]?.id ?? "");
+      }
+    }
+    loadGroupesFromFirestore();
 
     // Charger les blocs
     setBlocks(loadBlocks());

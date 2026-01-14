@@ -115,6 +115,28 @@ function cleanFirestoreData(data: any): any {
 }
 
 /**
+ * Récupère une partie par son ID
+ */
+export async function getPartie(partieId: string): Promise<Partie | null> {
+  try {
+    const docRef = doc(db, "parties", partieId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        ...data,
+        createdAt: data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
+      } as Partie;
+    }
+    return null;
+  } catch (error) {
+    console.error("Erreur lors de la récupération de la partie:", error);
+    return null;
+  }
+}
+
+/**
  * Crée une nouvelle partie
  */
 export async function createPartie(partie: Omit<Partie, "id" | "createdAt">): Promise<string> {
