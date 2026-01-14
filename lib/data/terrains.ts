@@ -90,6 +90,39 @@ export function addTerrainPersonnalise(nom: string, ville: string): Terrain {
 }
 
 /**
+ * Met à jour un terrain personnalisé
+ */
+export function updateTerrainPersonnalise(id: string, nom: string, ville: string): void {
+  const terrainsPersonnalises = loadFromStorage<Terrain[]>(
+    STORAGE_KEYS.terrainsPersonnalises,
+    []
+  );
+
+  const index = terrainsPersonnalises.findIndex((t) => t.id === id);
+  if (index === -1) {
+    throw new Error("Terrain personnalisé non trouvé");
+  }
+
+  // Vérifier si un autre terrain avec le même nom et ville existe déjà
+  const terrains = loadTerrains();
+  const existe = terrains.some(
+    (t) => t.id !== id && t.nom.toLowerCase() === nom.toLowerCase() && t.ville.toLowerCase() === ville.toLowerCase()
+  );
+
+  if (existe) {
+    throw new Error("Ce terrain existe déjà");
+  }
+
+  terrainsPersonnalises[index] = {
+    ...terrainsPersonnalises[index],
+    nom: nom.trim(),
+    ville: ville.trim(),
+  };
+
+  saveToStorage(STORAGE_KEYS.terrainsPersonnalises, terrainsPersonnalises);
+}
+
+/**
  * Supprime un terrain personnalisé
  */
 export function removeTerrainPersonnalise(id: string): void {
