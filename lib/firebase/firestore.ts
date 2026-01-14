@@ -47,10 +47,11 @@ export async function getProfil(userId: string): Promise<Profil | null> {
 export async function updateProfil(userId: string, data: Partial<Profil>) {
   try {
     const docRef = doc(db, "profils", userId);
-    await updateDoc(docRef, {
+    const cleanedData = cleanFirestoreData({
       ...data,
       updatedAt: Timestamp.now(),
     });
+    await updateDoc(docRef, cleanedData);
   } catch (error) {
     console.error("Erreur lors de la mise à jour du profil:", error);
     throw error;
@@ -273,10 +274,11 @@ export async function getMessages(partieId: string): Promise<Message[]> {
  */
 export async function sendMessage(message: Omit<Message, "id" | "createdAt">): Promise<string> {
   try {
-    const docRef = await addDoc(collection(db, "messages"), {
+    const messageData = cleanFirestoreData({
       ...message,
       createdAt: Timestamp.now(),
     });
+    const docRef = await addDoc(collection(db, "messages"), messageData);
     return docRef.id;
   } catch (error) {
     console.error("Erreur lors de l'envoi du message:", error);
