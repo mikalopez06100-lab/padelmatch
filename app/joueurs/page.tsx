@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
-import type { ProfilGlobal } from "@/lib/data/profils-globaux";
+import { getAllProfils } from "@/lib/firebase/firestore";
+import type { Profil } from "@/lib/types";
 import type { Niveau } from "@/lib/types";
 
 function getInitials(pseudo: string): string {
@@ -38,24 +38,41 @@ function getAvatarColor(pseudo: string): string {
 const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
 
 export default function JoueursPage() {
-  const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
+  const [profils, setProfils] = useState<Profil[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterNiveau, setFilterNiveau] = useState<Niveau | "">("");
 
   useEffect(() => {
-    setProfilsGlobaux(loadProfilsGlobaux());
+    async function loadProfils() {
+      try {
+        setLoading(true);
+        const profilsFirestore = await getAllProfils();
+        setProfils(profilsFirestore);
+      } catch (error) {
+        console.error("Erreur lors du chargement des profils:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProfils();
   }, []);
 
-  // Recharger les profils globaux périodiquement pour avoir les dernières mises à jour
+  // Recharger les profils périodiquement pour avoir les dernières mises à jour
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProfilsGlobaux(loadProfilsGlobaux());
-    }, 2000); // Recharger toutes les 2 secondes
+    const interval = setInterval(async () => {
+      try {
+        const profilsFirestore = await getAllProfils();
+        setProfils(profilsFirestore);
+      } catch (error) {
+        console.error("Erreur lors du rechargement des profils:", error);
+      }
+    }, 5000); // Recharger toutes les 5 secondes
     return () => clearInterval(interval);
   }, []);
 
   const profilsFiltres = useMemo(() => {
-    return profilsGlobaux.filter((p) => {
+    return profils.filter((p) => {
       // Filtre par recherche (pseudo)
       if (searchTerm && !p.pseudo.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
@@ -68,7 +85,7 @@ export default function JoueursPage() {
 
       return true;
     });
-  }, [profilsGlobaux, searchTerm, filterNiveau]);
+  }, [profils, searchTerm, filterNiveau]);
 
   return (
     <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
@@ -155,9 +172,11 @@ export default function JoueursPage() {
               background: "#1f1f1f",
             }}
           >
-            {profilsGlobaux.length === 0
-              ? "Aucun joueur enregistré pour l'instant."
-              : "Aucun joueur ne correspond à vos critères de recherche."}
+            {loading
+              ? "Chargement des joueurs..."
+              : profils.length === 0
+                ? "Aucun joueur enregistré pour l'instant."
+                : "Aucun joueur ne correspond à vos critères de recherche."}
           </div>
         ) : (
           profilsFiltres.map((p) => (

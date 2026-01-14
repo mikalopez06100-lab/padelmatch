@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getProfilGlobalByPseudo } from "@/lib/data/profils-globaux";
-import type { ProfilGlobal } from "@/lib/data/profils-globaux";
+import { getAllProfils } from "@/lib/firebase/firestore";
+import type { Profil } from "@/lib/types";
 import { calculateMatchStats } from "@/lib/data/stats";
 import type { MatchStats } from "@/lib/data/stats";
 import { loadCurrentProfilSync } from "@/lib/data/auth";
@@ -36,32 +36,48 @@ export default function JoueurProfilPage() {
   const params = useParams();
   const router = useRouter();
   const pseudo = typeof params.pseudo === "string" ? params.pseudo : "";
-  const [profil, setProfil] = useState<ProfilGlobal | null>(null);
+  const [profil, setProfil] = useState<Profil | null>(null);
   const [stats, setStats] = useState<MatchStats | null>(null);
   const [isCurrentUser, setIsCurrentUser] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!pseudo) return;
 
-    const profilTrouve = getProfilGlobalByPseudo(pseudo);
-    if (!profilTrouve) {
-      alert("Profil non trouvé");
-      router.push("/joueurs");
-      return;
+    async function loadProfil() {
+      try {
+        setLoading(true);
+        const profils = await getAllProfils();
+        const profilTrouve = profils.find((p) => p.pseudo.toLowerCase() === pseudo.toLowerCase());
+        
+        if (!profilTrouve) {
+          alert("Profil non trouvé");
+          router.push("/joueurs");
+          return;
+        }
+
+        setProfil(profilTrouve);
+
+        // Calculer les statistiques
+        const statistiques = calculateMatchStats(pseudo);
+        setStats(statistiques);
+
+        // Vérifier si c'est le profil de l'utilisateur connecté
+        const currentProfil = loadCurrentProfilSync();
+        setIsCurrentUser(currentProfil?.pseudo.toLowerCase() === pseudo.toLowerCase());
+      } catch (error) {
+        console.error("Erreur lors du chargement du profil:", error);
+        alert("Erreur lors du chargement du profil");
+        router.push("/joueurs");
+      } finally {
+        setLoading(false);
+      }
     }
 
-    setProfil(profilTrouve);
-
-    // Calculer les statistiques
-    const statistiques = calculateMatchStats(pseudo);
-    setStats(statistiques);
-
-    // Vérifier si c'est le profil de l'utilisateur connecté
-    const currentProfil = loadCurrentProfilSync();
-    setIsCurrentUser(currentProfil?.pseudo.toLowerCase() === pseudo.toLowerCase());
+    loadProfil();
   }, [pseudo, router]);
 
-  if (!profil || !stats) {
+  if (loading || !profil || !stats) {
     return (
       <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
         <div style={{ textAlign: "center", padding: 40 }}>
