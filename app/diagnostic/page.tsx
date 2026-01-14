@@ -14,23 +14,23 @@ export default function DiagnosticPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function checkStatus() {
+    async function checkStatus(user: any = null) {
       setLoading(true);
       setError(null);
 
       try {
         // 1. Vérifier l'utilisateur Firebase Auth
-        const user = getCurrentUser();
-        setAuthUser(user ? {
-          uid: user.uid,
-          email: user.email,
-          emailVerified: user.emailVerified,
+        const currentUser = user || getCurrentUser();
+        setAuthUser(currentUser ? {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          emailVerified: currentUser.emailVerified,
         } : null);
 
         // 2. Vérifier le profil dans Firestore
-        if (user) {
+        if (currentUser) {
           try {
-            const profil = await getProfil(user.uid);
+            const profil = await getProfil(currentUser.uid);
             setFirestoreProfil(profil);
           } catch (err: any) {
             setError(`Erreur Firestore: ${err.message}`);
@@ -54,10 +54,12 @@ export default function DiagnosticPage() {
 
     // Écouter les changements d'authentification
     const unsubscribe = onAuthChange((user) => {
-      checkStatus();
+      checkStatus(user);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const statusColor = (status: boolean) => status ? "#10b981" : "#ef4444";
