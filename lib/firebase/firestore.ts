@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./config";
 import type { Partie, Groupe, Profil, Message, Terrain } from "@/lib/types";
+import { convertOldNiveauToNew } from "@/lib/utils/niveau";
 
 // ===== PROFILS =====
 
@@ -29,8 +30,14 @@ export async function getProfil(userId: string): Promise<Profil | null> {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
+      // Migration automatique : convertir les anciens niveaux string en nouveaux niveaux numériques
+      const niveauMigre = typeof data.niveau === "string" 
+        ? convertOldNiveauToNew(data.niveau) 
+        : (typeof data.niveau === "number" ? data.niveau : 2.5);
+      
       return {
         ...data,
+        niveau: niveauMigre,
         // Convertir les timestamps en nombres si nécessaire
       } as Profil;
     }
@@ -47,11 +54,25 @@ export async function getProfil(userId: string): Promise<Profil | null> {
 export async function updateProfil(userId: string, data: Partial<Profil>) {
   try {
     const docRef = doc(db, "profils", userId);
+    
+    // Migration automatique : convertir le niveau si c'est encore une string
+    let dataMigre = { ...data };
+    if (data.niveau !== undefined) {
+      dataMigre.niveau = typeof data.niveau === "string" 
+        ? convertOldNiveauToNew(data.niveau) 
+        : data.niveau;
+    }
+    
     const cleanedData = cleanFirestoreData({
-      ...data,
+      ...dataMigre,
       updatedAt: Timestamp.now(),
     });
     await updateDoc(docRef, cleanedData);
+    
+    // Si le niveau a été migré, mettons à jour automatiquement dans Firestore pour les prochaines fois
+    if (typeof data.niveau === "string") {
+      console.log(`✅ Niveau migré pour ${userId}: "${data.niveau}" → ${dataMigre.niveau}`);
+    }
   } catch (error) {
     console.error("Erreur lors de la mise à jour du profil:", error);
     throw error;
@@ -64,9 +85,18 @@ export async function updateProfil(userId: string, data: Partial<Profil>) {
 export async function getAllProfils(): Promise<Profil[]> {
   try {
     const querySnapshot = await getDocs(collection(db, "profils"));
-    return querySnapshot.docs.map((doc) => ({
-      ...doc.data(),
-    })) as Profil[];
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      // Migration automatique : convertir les anciens niveaux string en nouveaux niveaux numériques
+      const niveauMigre = typeof data.niveau === "string" 
+        ? convertOldNiveauToNew(data.niveau) 
+        : (typeof data.niveau === "number" ? data.niveau : 2.5);
+      
+      return {
+        ...data,
+        niveau: niveauMigre,
+      } as Profil;
+    });
   } catch (error) {
     console.error("Erreur lors de la récupération des profils:", error);
     return [];

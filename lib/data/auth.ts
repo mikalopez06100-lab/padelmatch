@@ -8,6 +8,7 @@ import { getProfil, updateProfil as updateProfilFirestore } from "../firebase/fi
 import { STORAGE_KEYS, loadFromStorage, saveToStorage } from "./storage";
 import { getProfilGlobalByEmail, addOrUpdateProfilGlobal } from "./profils-globaux";
 import { hashPassword, verifyPassword } from "../utils/password";
+import { convertOldNiveauToNew } from "../utils/niveau";
 
 /**
  * Recherche un profil par email dans les profils globaux et vérifie le mot de passe
@@ -125,15 +126,39 @@ export async function loadCurrentProfil(): Promise<Profil | null> {
       // Récupérer le profil depuis Firestore
       const profil = await getProfil(user.uid);
       if (profil) {
+        // Migration automatique : si le niveau dans Firestore est encore une string, le migrer
+        // (getProfil fait déjà la conversion, mais on s'assure ici aussi)
+        let profilMigre = profil;
+        if (typeof profil.niveau === "string") {
+          const nouveauNiveau = convertOldNiveauToNew(profil.niveau);
+          profilMigre = { ...profil, niveau: nouveauNiveau };
+          // Mettre à jour dans Firestore pour que la migration soit permanente
+          try {
+            await updateProfilFirestore(user.uid, { niveau: nouveauNiveau });
+            console.log(`✅ Niveau migré dans Firestore pour ${user.uid}: "${profil.niveau}" → ${nouveauNiveau}`);
+          } catch (error) {
+            console.warn("⚠️ Impossible de migrer le niveau dans Firestore:", error);
+          }
+        }
+        
         // Sauvegarder dans localStorage pour compatibilité
-        saveToStorage(STORAGE_KEYS.profil, profil);
-        return profil;
+        saveToStorage(STORAGE_KEYS.profil, profilMigre);
+        return profilMigre;
       }
     }
 
     // Fallback : vérifier localStorage (pour compatibilité avec anciens comptes)
     const profil = loadFromStorage<Profil | null>(STORAGE_KEYS.profil, null);
     if (!profil?.pseudo) return null;
+    
+    // Migration du niveau si nécessaire (pour localStorage aussi)
+    if (typeof profil.niveau === "string") {
+      const nouveauNiveau = convertOldNiveauToNew(profil.niveau);
+      const profilMigre = { ...profil, niveau: nouveauNiveau };
+      saveToStorage(STORAGE_KEYS.profil, profilMigre);
+      return profilMigre;
+    }
+    
     return profil;
   } catch {
     return null;
@@ -172,10 +197,17 @@ export async function updateProfil(profil: Profil): Promise<void> {
   try {
     const user = getCurrentUser();
     if (user) {
+      // Migration automatique du niveau si nécessaire
+      let profilMigre = profil;
+      if (typeof profil.niveau === "string") {
+        profilMigre = { ...profil, niveau: convertOldNiveauToNew(profil.niveau) };
+        console.log(`✅ Migration niveau lors de la mise à jour: "${profil.niveau}" → ${profilMigre.niveau}`);
+      }
+      
       // Mettre à jour dans Firestore
-      await updateProfilFirestore(user.uid, profil);
+      await updateProfilFirestore(user.uid, profilMigre);
       // Sauvegarder dans localStorage pour compatibilité
-      saveToStorage(STORAGE_KEYS.profil, profil);
+      saveToStorage(STORAGE_KEYS.profil, profilMigre);
       return;
     }
   } catch (error) {
@@ -189,13 +221,25 @@ export async function updateProfil(profil: Profil): Promise<void> {
     return;
   }
 
+  // Migration du niveau pour le système local aussi
+  let niveauMigre = profil.niveau;
+  if (typeof profil.niveau === "string") {
+    niveauMigre = convertOldNiveauToNew(profil.niveau);
+  }
+
   const profilComplet: ProfilComplet = {
     ...profilGlobal,
     ...profil,
+    niveau: niveauMigre,
     passwordHash: profilGlobal.passwordHash,
   };
 
-  saveToStorage(STORAGE_KEYS.profil, profil);
+  const profilSansPassword: Profil = {
+    ...profil,
+    niveau: niveauMigre,
+  };
+
+  saveToStorage(STORAGE_KEYS.profil, profilSansPassword);
   addOrUpdateProfilGlobal(profilComplet);
 }
 
