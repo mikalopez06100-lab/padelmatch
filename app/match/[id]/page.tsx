@@ -10,7 +10,7 @@ import { loadTerrains, type Terrain } from "@/lib/data/terrains";
 import { loadGroupes, getGroupeById } from "@/lib/data/groupes";
 import type { Groupe } from "@/lib/types";
 import { showNotification } from "../../utils/notifications";
-import { subscribeToParties, updatePartie as updatePartieFirestore } from "@/lib/firebase/firestore";
+import { subscribeToParties, updatePartie as updatePartieFirestore, sendMessage as sendMessageFirestore, getMessages as getMessagesFirestore, subscribeToMessages } from "@/lib/firebase/firestore";
 
 type Participant = {
   pseudo: string;
@@ -155,8 +155,22 @@ export default function MatchPage() {
     setIsParticipant(!!participant);
     setIsOrganisateur(participant?.role === "organisateur");
 
-    const loadedMessages = loadMessages(matchId);
-    setMessages(loadedMessages);
+    // Charger les messages depuis Firestore en priorité
+    async function loadMessagesFromFirestore() {
+      try {
+        const messagesFirestore = await getMessagesFirestore(matchId);
+        if (messagesFirestore.length > 0) {
+          setMessages(messagesFirestore);
+          return;
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des messages depuis Firestore:", error);
+      }
+      // Fallback : charger depuis localStorage
+      const loadedMessages = loadMessages(matchId);
+      setMessages(loadedMessages);
+    }
+    loadMessagesFromFirestore();
   }, [matchId]);
 
   // Charger les profils globaux pour afficher les photos
@@ -271,6 +285,19 @@ export default function MatchPage() {
     };
   }, [matchId, partie]);
 
+  // S'abonner aux messages en temps réel depuis Firestore
+  useEffect(() => {
+    if (!matchId) return;
+
+    const unsubscribe = subscribeToMessages(matchId, (messagesFirestore) => {
+      setMessages(messagesFirestore);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [matchId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -318,21 +345,60 @@ export default function MatchPage() {
     router.push("/parties");
   }
 
-  function envoyerMessage() {
+  async function envoyerMessage() {
     if (!messageText.trim() || !partie) return;
 
     const monPseudo = getMonPseudo();
-    const newMessage: Message = {
-      id: crypto.randomUUID(),
+    const contenuMessage = messageText.trim();
+    
+    // Réinitialiser le champ immédiatement pour une meilleure UX
+    setMessageText("");
+
+    // Créer le message temporairement pour affichage optimiste
+    const tempMessage: Message = {
+      id: "temp-" + Date.now(),
       partieId: matchId,
       pseudo: monPseudo,
-      contenu: messageText.trim(),
+      contenu: contenuMessage,
       createdAt: Date.now(),
     };
 
-    saveMessage(matchId, newMessage);
-    setMessages([...messages, newMessage]);
-    setMessageText("");
+    // Ajouter le message optimistiquement
+    setMessages((prev) => [...prev, tempMessage]);
+
+    try {
+      // Sauvegarder dans Firestore
+      const messageId = await sendMessageFirestore({
+        partieId: matchId,
+        pseudo: monPseudo,
+        contenu: contenuMessage,
+      });
+      console.log("✅ Message envoyé dans Firestore avec l'ID:", messageId);
+      
+      // Le message sera automatiquement mis à jour par subscribeToMessages
+      // Retirer le message temporaire si nécessaire
+      setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
+    } catch (error: any) {
+      console.error("❌ Erreur lors de l'envoi du message dans Firestore:", error);
+      
+      // Fallback : sauvegarder dans localStorage si Firestore échoue
+      const fallbackMessage: Message = {
+        id: crypto.randomUUID(),
+        partieId: matchId,
+        pseudo: monPseudo,
+        contenu: contenuMessage,
+        createdAt: Date.now(),
+      };
+      saveMessage(matchId, fallbackMessage);
+      
+      // Retirer le message temporaire et ajouter le message de fallback
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => m.id !== tempMessage.id);
+        return [...filtered, fallbackMessage];
+      });
+      
+      alert("Erreur lors de l'envoi du message. Le message a été sauvegardé localement.");
+    }
   }
 
   async function acceptRequest(pseudo: string) {
