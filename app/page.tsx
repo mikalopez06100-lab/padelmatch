@@ -127,7 +127,7 @@ export default function Home() {
   return (
     <div
       style={{
-        background: "#000",
+        background: "transparent",
         color: "#fff",
         minHeight: "100vh",
         display: "flex",
