@@ -71,9 +71,11 @@ export async function addTerrainPersonnalise(nom: string, ville: string): Promis
   // Charger tous les terrains pour vérifier les doublons
   const terrains = await loadTerrains();
   
-  // Vérifier si le terrain existe déjà
+  // Vérifier si le terrain existe déjà (comparaison insensible à la casse et aux espaces)
+  const nomNormalise = nom.trim().toLowerCase();
+  const villeNormalisee = ville.trim().toLowerCase();
   const existe = terrains.some(
-    (t) => t.nom.toLowerCase() === nom.toLowerCase() && t.ville.toLowerCase() === ville.toLowerCase()
+    (t) => t.nom.trim().toLowerCase() === nomNormalise && t.ville.trim().toLowerCase() === villeNormalisee
   );
   
   if (existe) {
@@ -108,10 +110,12 @@ export async function updateTerrainPersonnalise(id: string, nom: string, ville: 
     throw new Error("Les terrains de base ne peuvent pas être modifiés");
   }
 
-  // Charger tous les terrains pour vérifier les doublons
+  // Charger tous les terrains pour vérifier les doublons (comparaison insensible à la casse et aux espaces)
   const terrains = await loadTerrains();
+  const nomNormalise = nom.trim().toLowerCase();
+  const villeNormalisee = ville.trim().toLowerCase();
   const existe = terrains.some(
-    (t) => t.id !== id && t.nom.toLowerCase() === nom.toLowerCase() && t.ville.toLowerCase() === ville.toLowerCase()
+    (t) => t.id !== id && t.nom.trim().toLowerCase() === nomNormalise && t.ville.trim().toLowerCase() === villeNormalisee
   );
 
   if (existe) {
