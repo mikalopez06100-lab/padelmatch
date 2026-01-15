@@ -52,7 +52,7 @@ export async function createProfil(data: {
   pseudo: string;
   email: string;
   password: string;
-  niveau: string;
+  niveau: Niveau;
   photoUrl?: string;
 }): Promise<Profil> {
   try {
