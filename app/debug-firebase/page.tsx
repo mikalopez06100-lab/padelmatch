@@ -53,7 +53,7 @@ export default function DebugFirebasePage() {
       
       const user = await createAccount(email, password, {
         pseudo,
-        niveau: "Débutant",
+        niveau: 2.5, // Niveau par défaut (Intermédiaire)
         friendlyScore: 50,
         xp: 0,
       });

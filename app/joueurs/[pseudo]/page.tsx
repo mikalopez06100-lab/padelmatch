@@ -7,6 +7,7 @@ import type { Profil } from "@/lib/types";
 import { calculateMatchStats } from "@/lib/data/stats";
 import type { MatchStats } from "@/lib/data/stats";
 import { loadCurrentProfilSync } from "@/lib/data/auth";
+import { formatNiveau, getCategorieNiveau } from "@/lib/utils/niveau";
 
 function getInitials(pseudo: string): string {
   return pseudo
@@ -150,18 +151,20 @@ export default function JoueurProfilPage() {
                 fontSize: 13,
                 fontWeight: 600,
                 background:
-                  profil.niveau === "Compétitif"
-                    ? "#ef4444"
-                    : profil.niveau === "Confirmé"
-                      ? "#f59e0b"
-                      : profil.niveau === "Intermédiaire"
-                        ? "#3b82f6"
-                        : "#10b981",
+                  typeof profil.niveau === "number"
+                    ? profil.niveau >= 6.0
+                      ? "#ef4444" // Expert
+                      : profil.niveau >= 4.0
+                        ? "#f59e0b" // Confirmé
+                        : profil.niveau >= 2.0
+                          ? "#3b82f6" // Intermédiaire
+                          : "#10b981" // Débutant
+                    : "#10b981", // Fallback
                 color: "#fff",
                 marginBottom: 12,
               }}
             >
-              🎾 {typeof profil.niveau === "number" ? `${typeof profil.niveau === "number" ? profil.niveau.toFixed(1) : profil.niveau} - ${profil.niveau >= 6.0 ? "Expert" : profil.niveau >= 4.0 ? "Confirmé" : profil.niveau >= 2.0 ? "Intermédiaire" : "Débutant"}` : profil.niveau}
+              🎾 {typeof profil.niveau === "number" ? `${formatNiveau(profil.niveau)} - ${getCategorieNiveau(profil.niveau)}` : String(profil.niveau)}
             </div>
             <div style={{ fontSize: 14, opacity: 0.8, color: "#fff", display: "flex", gap: 16, flexWrap: "wrap" }}>
               <span>⭐ Friendly {profil.friendlyScore}/100</span>
