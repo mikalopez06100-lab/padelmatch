@@ -84,6 +84,8 @@ export default function ProfilPage() {
       setPseudo(existing.pseudo);
       setNiveau(existing.niveau);
       setPhotoUrl(existing.photoUrl);
+      setTelephone(existing.telephone || "");
+      setPreferenceCommunication(existing.preferenceCommunication || "notification");
       setSaved(existing);
     }
     setBlocks(loadBlocks());
