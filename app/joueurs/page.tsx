@@ -183,9 +183,12 @@ export default function JoueursPage() {
                 : "Aucun joueur ne correspond à vos critères de recherche."}
           </div>
         ) : (
-          profilsFiltres.map((p) => (
+          profilsFiltres.map((p) => {
+            // Utiliser un ID unique pour la clé React (email ou combinaison pseudo+email)
+            const uniqueKey = (p as any).id || `${p.pseudo}-${p.email}`;
+            return (
             <div
-              key={p.pseudo}
+              key={uniqueKey}
               style={{
                 border: "1px solid #2a2a2a",
                 borderRadius: 12,
@@ -267,10 +270,11 @@ export default function JoueursPage() {
                   flexShrink: 0,
                 }}
               >
-                {typeof p.niveau === "number" ? `${formatNiveau(p.niveau)} - ${getCategorieNiveau(p.niveau)}` : p.niveau}
+                  {typeof p.niveau === "number" ? `${formatNiveau(p.niveau)} - ${getCategorieNiveau(p.niveau)}` : p.niveau}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

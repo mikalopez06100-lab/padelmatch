@@ -84,8 +84,11 @@ export async function updateProfil(userId: string, data: Partial<Profil>) {
  */
 export async function getAllProfils(): Promise<Profil[]> {
   try {
+    console.log("🔄 Récupération de tous les profils depuis Firestore...");
     const querySnapshot = await getDocs(collection(db, "profils"));
-    return querySnapshot.docs.map((doc) => {
+    console.log(`✅ ${querySnapshot.docs.length} profils trouvés dans Firestore`);
+    
+    const profils = querySnapshot.docs.map((doc) => {
       const data = doc.data();
       // Migration automatique : convertir les anciens niveaux string en nouveaux niveaux numériques
       const niveauMigre = typeof data.niveau === "string" 
@@ -95,10 +98,20 @@ export async function getAllProfils(): Promise<Profil[]> {
       return {
         ...data,
         niveau: niveauMigre,
-      } as Profil;
+        // Inclure l'ID du document pour l'identification unique
+        id: doc.id,
+      } as Profil & { id: string };
     });
-  } catch (error) {
-    console.error("Erreur lors de la récupération des profils:", error);
+    
+    console.log("📋 Profils récupérés:", profils.map(p => ({ pseudo: p.pseudo, email: p.email, id: (p as any).id })));
+    return profils as Profil[];
+  } catch (error: any) {
+    console.error("❌ Erreur lors de la récupération des profils:", error);
+    console.error("Code d'erreur:", error.code);
+    console.error("Message:", error.message);
+    if (error.code === "permission-denied") {
+      console.error("⚠️ Permission refusée - Vérifiez les règles Firestore");
+    }
     return [];
   }
 }

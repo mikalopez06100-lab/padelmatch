@@ -68,18 +68,36 @@ export async function createProfil(data: {
       photoUrl: data.photoUrl,
     });
 
-    console.log("✅ Compte Firebase créé, récupération du profil...", user.uid);
+    console.log("✅ Compte Firebase créé, attente de synchronisation Firestore...", user.uid);
 
-    // Récupérer le profil créé
-    const profil = await getProfil(user.uid);
+    // Attendre un délai pour la synchronisation Firestore
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Récupérer le profil créé (plusieurs tentatives si nécessaire)
+    let profil = await getProfil(user.uid);
+    let tentatives = 0;
+    const maxTentatives = 3;
+    
+    while (!profil && tentatives < maxTentatives) {
+      tentatives++;
+      console.log(`🔄 Tentative ${tentatives}/${maxTentatives} pour récupérer le profil...`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      profil = await getProfil(user.uid);
+    }
+    
     if (profil) {
-      console.log("✅ Profil récupéré depuis Firestore:", profil);
+      console.log("✅ Profil récupéré depuis Firestore:", {
+        uid: user.uid,
+        pseudo: profil.pseudo,
+        email: profil.email,
+        niveau: profil.niveau,
+      });
       // Sauvegarder dans localStorage pour compatibilité
       saveToStorage(STORAGE_KEYS.profil, profil);
       return profil;
     }
 
-    console.error("❌ Profil non trouvé dans Firestore après création");
+    console.error("❌ Profil non trouvé dans Firestore après", maxTentatives, "tentatives");
     throw new Error("Profil non créé dans Firestore");
   } catch (error: any) {
     console.error("❌ Erreur lors de la création du profil:", error);

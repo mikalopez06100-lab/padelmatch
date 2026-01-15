@@ -56,18 +56,40 @@ export async function createAccount(
       await setDoc(doc(db, "profils", user.uid), profilDoc);
       console.log("✅ Profil créé dans Firestore avec succès !");
       
+      // Attendre un court délai pour la synchronisation Firestore
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      
       // Vérification immédiate
       const docRef = doc(db, "profils", user.uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        console.log("✅ Vérification OK : Le profil existe dans Firestore", docSnap.data());
+        const profilData = docSnap.data();
+        console.log("✅ Vérification OK : Le profil existe dans Firestore", {
+          uid: user.uid,
+          pseudo: profilData.pseudo,
+          email: profilData.email,
+          niveau: profilData.niveau,
+          keys: Object.keys(profilData),
+        });
       } else {
         console.error("❌ PROBLÈME : Le profil n'existe pas après création !");
+        // Essayer une nouvelle fois après un délai supplémentaire
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const docSnapRetry = await getDoc(docRef);
+        if (docSnapRetry.exists()) {
+          console.log("✅ Profil trouvé après nouvelle tentative");
+        } else {
+          console.error("❌ Le profil n'existe toujours pas après nouvelle tentative");
+        }
       }
     } catch (firestoreError: any) {
       console.error("❌ Erreur Firestore lors de la création:", firestoreError);
       console.error("Code d'erreur:", firestoreError.code);
       console.error("Message:", firestoreError.message);
+      if (firestoreError.code === "permission-denied") {
+        console.error("⚠️ Permission refusée - Vérifiez les règles Firestore pour la collection 'profils'");
+        console.error("📋 Règle attendue: allow create: if isAuthenticated() && request.auth.uid == userId && request.resource.data.keys().hasAll(['pseudo', 'email', 'niveau'])");
+      }
       throw firestoreError;
     }
 
