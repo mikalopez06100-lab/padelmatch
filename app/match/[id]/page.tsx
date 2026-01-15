@@ -283,6 +283,9 @@ export default function MatchPage() {
     }
 
     const parties = load<Partie[]>(PARTIES_KEY, []);
+    const partieAvant = parties.find((p) => p.id === matchId);
+    const avaitDejaDemande = partieAvant?.demandes.some((d) => d.pseudo === monPseudo);
+    
     const updated = parties.map((p) => {
       if (p.id !== matchId) return p;
       if (p.participants.length >= p.placesTotal) return p;
@@ -291,6 +294,15 @@ export default function MatchPage() {
 
       return { ...p, demandes: [...p.demandes, { pseudo: monPseudo, createdAt: Date.now() }] };
     });
+    
+    // Vérifier si la demande a été ajoutée et afficher une confirmation
+    const partieModifiee = updated.find((p) => p.id === matchId);
+    const demandeAjoutee = partieModifiee && partieModifiee.demandes.some((d) => d.pseudo === monPseudo);
+    
+    if (demandeAjoutee && !avaitDejaDemande) {
+      alert("✅ Demande envoyée ! L'organisateur va valider votre participation.");
+    }
+    
     persistParties(updated);
   }
 

@@ -557,6 +557,16 @@ export default function PartiesPage() {
       return { ...p, demandes: [...p.demandes, { pseudo: monPseudo, createdAt: Date.now() }] };
     });
     
+    // Vérifier si la demande a été ajoutée
+    const partieModifiee = updatedParties.find((p) => p.id === id);
+    const demandeAjoutee = partieModifiee && partieModifiee.demandes.some((d) => d.pseudo === monPseudo);
+    const partieAvant = parties.find((p) => p.id === id);
+    const avaitDejaDemande = partieAvant?.demandes.some((d) => d.pseudo === monPseudo);
+    
+    if (demandeAjoutee && !avaitDejaDemande) {
+      alert("✅ Demande envoyée ! L'organisateur va valider votre participation.");
+    }
+    
     persist(updatedParties);
 
     // Sauvegarder dans Firestore
