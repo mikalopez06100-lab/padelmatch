@@ -100,7 +100,7 @@ export default function GroupesPage() {
 
   if (loading) {
     return (
-      <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
+      <div style={{ background: "transparent", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
         <div style={{ textAlign: "center", padding: 40 }}>
           <p style={{ color: "#fff", fontSize: 16 }}>Chargement...</p>
         </div>

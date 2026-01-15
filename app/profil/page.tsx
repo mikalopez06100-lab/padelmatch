@@ -157,7 +157,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, maxWidth: "100%", boxSizing: "border-box" }}>
+    <div style={{ background: "transparent", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, maxWidth: "100%", boxSizing: "border-box" }}>
       <h1 style={{ fontSize: 22, marginBottom: 8, color: "#fff" }}>🙂 Mon profil</h1>
       <p style={{ opacity: 0.7, marginTop: 0, color: "#fff", fontSize: 14 }}>
         Gère ton profil, ajoute ta photo et paramètre tes préférences.

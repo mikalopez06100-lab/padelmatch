@@ -296,7 +296,7 @@ export default function MatchPage() {
 
   if (!partie) {
     return (
-      <div style={{ padding: 24, background: "#000", minHeight: "100vh", color: "#fff" }}>
+      <div style={{ padding: 24, background: "transparent", minHeight: "100vh", color: "#fff" }}>
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>🎾 Partie introuvable</h1>
         <p style={{ opacity: 0.7 }}>Cette partie n'existe pas ou a été supprimée.</p>
         <button
@@ -325,7 +325,7 @@ export default function MatchPage() {
   // Si la partie est complète, seuls les participants peuvent y accéder
   if (complete && !participant) {
     return (
-      <div style={{ padding: 24, background: "#000", minHeight: "100vh", color: "#fff" }}>
+      <div style={{ padding: 24, background: "transparent", minHeight: "100vh", color: "#fff" }}>
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>🔒 Accès refusé</h1>
         <p style={{ opacity: 0.7 }}>
           Cette partie est complète. Seuls les joueurs inscrits peuvent y accéder.
@@ -353,7 +353,7 @@ export default function MatchPage() {
   const niveauAffiche = "3.0";
 
   return (
-    <div style={{ background: "#000", minHeight: "100vh", color: "#fff", paddingBottom: 80 }}>
+    <div style={{ background: "transparent", minHeight: "100vh", color: "#fff", paddingBottom: 80 }}>
       {/* Header */}
       <div
         style={{

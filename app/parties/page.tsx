@@ -613,7 +613,7 @@ export default function PartiesPage() {
   return (
     <div
       style={{
-        background: "#000",
+        background: "transparent",
         color: "#fff",
         minHeight: "100vh",
         padding: "16px",
