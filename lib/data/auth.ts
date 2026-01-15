@@ -2,7 +2,7 @@
 // Gère la connexion avec email/mot de passe
 // Utilise Firebase Auth + Firestore
 
-import type { Profil, ProfilComplet } from "../types";
+import type { Profil, ProfilComplet, Niveau } from "../types";
 import { login as firebaseLogin, createAccount as firebaseCreateAccount, resetPassword as firebaseResetPassword, getCurrentUser, onAuthChange } from "../firebase/auth";
 import { getProfil, updateProfil as updateProfilFirestore } from "../firebase/firestore";
 import { STORAGE_KEYS, loadFromStorage, saveToStorage } from "./storage";

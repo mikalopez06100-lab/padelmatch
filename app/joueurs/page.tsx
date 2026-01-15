@@ -36,7 +36,7 @@ function getAvatarColor(pseudo: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
+const NIVEAUX = getAllNiveaux();
 
 export default function JoueursPage() {
   const [profils, setProfils] = useState<Profil[]>([]);
@@ -126,8 +126,8 @@ export default function JoueursPage() {
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <select
-            value={filterNiveau}
-            onChange={(e) => setFilterNiveau(e.target.value as Niveau | "")}
+            value={filterNiveau === null ? "" : filterNiveau}
+            onChange={(e) => setFilterNiveau(e.target.value ? parseFloat(e.target.value) : null)}
             style={{
               flex: 1,
               minWidth: 150,
@@ -142,11 +142,14 @@ export default function JoueursPage() {
             <option value="" style={{ background: "#141414", color: "#fff" }}>
               Tous les niveaux
             </option>
-            {NIVEAUX.map((n) => (
-              <option key={n} value={n} style={{ background: "#141414", color: "#fff" }}>
-                {n}
-              </option>
-            ))}
+            {NIVEAUX.map((n) => {
+              const categorie = getCategorieNiveau(n);
+              return (
+                <option key={n} value={n} style={{ background: "#141414", color: "#fff" }}>
+                  {formatNiveau(n)} - {categorie}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -264,7 +267,7 @@ export default function JoueursPage() {
                   flexShrink: 0,
                 }}
               >
-                {p.niveau}
+                {typeof p.niveau === "number" ? `${formatNiveau(p.niveau)} - ${getCategorieNiveau(p.niveau)}` : p.niveau}
               </div>
             </div>
           ))
