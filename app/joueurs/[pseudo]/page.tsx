@@ -200,10 +200,75 @@ export default function JoueurProfilPage() {
             >
               🎾 {typeof profil.niveau === "number" ? `${formatNiveau(profil.niveau)} - ${getCategorieNiveau(profil.niveau)}` : String(profil.niveau)}
             </div>
-            <div style={{ fontSize: 14, opacity: 0.8, color: "#fff", display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 14, opacity: 0.8, color: "#fff", display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
               <span>⭐ Friendly {profil.friendlyScore}/100</span>
               {profil.xp > 0 && <span>✨ {profil.xp} XP</span>}
             </div>
+            
+            {/* Informations complémentaires */}
+            {(profil.mainDominante || profil.positionTerrain || profil.telephone) && (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 16,
+                  borderRadius: 12,
+                  border: "1px solid #2a2a2a",
+                  background: "#141414",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: "#fff", marginBottom: 8 }}>📋 Informations complémentaires</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {profil.mainDominante && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 14, opacity: 0.7, color: "#fff", minWidth: 140 }}>
+                        Main dominante :
+                      </span>
+                      <span style={{ fontSize: 14, color: "#10b981", fontWeight: 500 }}>
+                        {profil.mainDominante === "droitier" ? "✋ Droitier" : "🤚 Gaucher"}
+                      </span>
+                    </div>
+                  )}
+                  {profil.positionTerrain && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 14, opacity: 0.7, color: "#fff", minWidth: 140 }}>
+                        Position terrain :
+                      </span>
+                      <span style={{ fontSize: 14, color: "#10b981", fontWeight: 500 }}>
+                        {profil.positionTerrain === "droite" ? "▶️ Droite" : "◀️ Gauche"}
+                      </span>
+                    </div>
+                  )}
+                  {profil.telephone && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 14, opacity: 0.7, color: "#fff", minWidth: 140 }}>
+                        Téléphone :
+                      </span>
+                      <a
+                        href={`tel:${profil.telephone}`}
+                        style={{
+                          fontSize: 14,
+                          color: "#10b981",
+                          fontWeight: 500,
+                          textDecoration: "none",
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.textDecoration = "underline";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.textDecoration = "none";
+                        }}
+                      >
+                        📞 {profil.telephone}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
