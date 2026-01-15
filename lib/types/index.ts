@@ -16,6 +16,8 @@ export type Zone =
   | "Menton"
   | "Autre";
 
+export type PreferenceCommunication = "notification" | "email" | "whatsapp" | "notification_email";
+
 // Types de base
 export interface Participant {
   pseudo: string;
@@ -73,6 +75,8 @@ export interface ProfilComplet {
   friendlyScore: number; // 0-100
   xp: number; // points
   photoUrl?: string; // base64 image URL
+  telephone?: string; // Numéro de téléphone
+  preferenceCommunication?: PreferenceCommunication; // Préférence de communication
 }
 
 // Profil utilisateur (sans passwordHash - pour localStorage local)
@@ -83,6 +87,8 @@ export interface Profil {
   friendlyScore: number; // 0-100
   xp: number; // points
   photoUrl?: string; // base64 image URL
+  telephone?: string; // Numéro de téléphone
+  preferenceCommunication?: PreferenceCommunication; // Préférence de communication
   // TODO: Migration backend - ajouter userId: string, updatedAt: number
 }
 
@@ -148,6 +154,7 @@ export interface ProfilDocument {
   xp: number;
   photoUrl?: string; // URL de l'image (Firebase Storage ou base64 en MVP)
   telephone?: string; // Numéro de téléphone
+  preferenceCommunication?: PreferenceCommunication; // Préférence de communication
   createdAt: number;
   updatedAt: number;
 }

@@ -73,6 +73,7 @@ export default function ProfilPage() {
   const [niveau, setNiveau] = useState<Niveau>("Débutant");
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [telephone, setTelephone] = useState("");
+  const [preferenceCommunication, setPreferenceCommunication] = useState<PreferenceCommunication>("notification");
   const [saved, setSaved] = useState<ProfilType | null>(null);
   const [blocks, setBlocks] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,6 +135,7 @@ export default function ProfilPage() {
       xp: saved?.xp ?? 0,
       photoUrl,
       telephone: cleanTelephone || undefined,
+      preferenceCommunication,
     };
 
     saveProfil(profil);
@@ -146,6 +148,8 @@ export default function ProfilPage() {
     setPseudo("");
     setNiveau("Débutant");
     setPhotoUrl(undefined);
+    setTelephone("");
+    setPreferenceCommunication("notification");
     setSaved(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -309,6 +313,42 @@ export default function ProfilPage() {
           </p>
         </div>
 
+        <div style={{ display: "grid", gap: 8 }}>
+          <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>
+            Préférences de communication
+          </label>
+          <select
+            value={preferenceCommunication}
+            onChange={(e) => setPreferenceCommunication(e.target.value as PreferenceCommunication)}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: 12,
+              borderRadius: 10,
+              border: "1px solid #2a2a2a",
+              background: "#141414",
+              color: "#fff",
+              fontSize: 14,
+            }}
+          >
+            <option value="notification" style={{ background: "#141414", color: "#fff" }}>
+              🔔 Notifications uniquement
+            </option>
+            <option value="email" style={{ background: "#141414", color: "#fff" }}>
+              📧 Email uniquement
+            </option>
+            <option value="notification_email" style={{ background: "#141414", color: "#fff" }}>
+              🔔📧 Notifications + Email
+            </option>
+            <option value="whatsapp" style={{ background: "#141414", color: "#fff" }}>
+              💬 WhatsApp (si numéro fourni)
+            </option>
+          </select>
+          <p style={{ fontSize: 12, opacity: 0.6, color: "#fff", margin: 0 }}>
+            Choisissez comment vous souhaitez être notifié des nouveaux matchs de votre groupe
+          </p>
+        </div>
+
         <button
           onClick={onSave}
           style={{
@@ -381,6 +421,15 @@ export default function ProfilPage() {
             <div>🤝 Friendly score : {saved.friendlyScore}</div>
             <div>⭐ Points : {saved.xp}</div>
             {saved.telephone && <div>📞 Téléphone : {saved.telephone}</div>}
+            {saved.preferenceCommunication && (
+              <div>
+                📢 Communication :{" "}
+                {saved.preferenceCommunication === "notification" && "🔔 Notifications uniquement"}
+                {saved.preferenceCommunication === "email" && "📧 Email uniquement"}
+                {saved.preferenceCommunication === "notification_email" && "🔔📧 Notifications + Email"}
+                {saved.preferenceCommunication === "whatsapp" && "💬 WhatsApp"}
+              </div>
+            )}
           </div>
         </div>
       )}

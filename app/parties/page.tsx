@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { showNotification } from "../utils/notifications";
-import { loadProfilsGlobaux } from "@/lib/data/profils-globaux";
+import { loadProfilsGlobaux, getProfilGlobalByPseudo } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 import { loadTerrains, addTerrainPersonnalise, type Terrain } from "@/lib/data/terrains";
 import { loadCurrentProfilSync } from "@/lib/data/auth";
@@ -425,6 +425,72 @@ export default function PartiesPage() {
     setParties(next);
     // Sauvegarder dans localStorage pour compatibilité (fallback)
     save(PARTIES_KEY, next);
+  }
+
+  function notifyGroupMembers(partie: Omit<Partie, "id">, groupe: Groupe) {
+    // Récupérer les membres du groupe (exclure l'organisateur)
+    const membres = groupe.membres || [];
+    const membresANotifier = membres.filter((m) => m !== partie.organisateurPseudo);
+
+    if (membresANotifier.length === 0) {
+      console.log("ℹ️ Aucun membre à notifier pour ce match");
+      return;
+    }
+
+    // Formater la date pour l'affichage
+    const dateObj = new Date(partie.dateISO);
+    const dateFormatee = dateObj.toLocaleDateString("fr-FR", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    membresANotifier.forEach((pseudoMembre) => {
+      const profilMembre = getProfilGlobalByPseudo(pseudoMembre);
+      
+      if (!profilMembre) {
+        console.log(`⚠️ Profil non trouvé pour ${pseudoMembre}`);
+        return;
+      }
+
+      const preference = profilMembre.preferenceCommunication || "notification";
+      
+      // Notifications navigateur (toujours affichées si l'utilisateur a l'app ouverte)
+      if (preference === "notification" || preference === "notification_email") {
+        showNotification("🎾 Nouveau match créé !", {
+          body: `${partie.organisateurPseudo} a créé un match pour ${partie.groupeNom}\n📅 ${dateFormatee}`,
+          tag: `nouveau-match-${partie.groupeId}-${Date.now()}`,
+        });
+      }
+
+      // Email (pour l'instant, on logue - nécessiterait un service d'email comme Resend, SendGrid)
+      if (preference === "email" || preference === "notification_email") {
+        console.log(`📧 Email à envoyer à ${profilMembre.email}: Nouveau match créé - ${partie.groupeNom}`);
+        // TODO: Implémenter l'envoi d'email avec un service externe
+        // await sendEmail(profilMembre.email, "Nouveau match créé", ...);
+      }
+
+      // WhatsApp (pour l'instant, on logue - nécessiterait WhatsApp Business API ou lien WhatsApp)
+      if (preference === "whatsapp" && profilMembre.telephone) {
+        const numero = profilMembre.telephone.replace(/\s/g, "").replace(/^0/, "+33");
+        const message = encodeURIComponent(
+          `🎾 Nouveau match créé par ${partie.organisateurPseudo} !\n\n` +
+          `📅 Date: ${dateFormatee}\n` +
+          `👥 Groupe: ${partie.groupeNom}\n` +
+          `📍 Zone: ${partie.zone}\n\n` +
+          `Rejoins le match sur PadelMatch !`
+        );
+        const whatsappUrl = `https://wa.me/${numero}?text=${message}`;
+        console.log(`💬 WhatsApp à envoyer à ${profilMembre.telephone}: ${whatsappUrl}`);
+        // TODO: Implémenter l'envoi WhatsApp (nécessite WhatsApp Business API ou ouvrir le lien)
+        // window.open(whatsappUrl, '_blank'); // Option : ouvrir WhatsApp dans un nouvel onglet
+      }
+    });
+
+    console.log(`✅ Notifications envoyées à ${membresANotifier.length} membre(s) du groupe`);
   }
 
   async function updatePartieInFirestore(partieId: string, updates: Partial<Partie>) {
