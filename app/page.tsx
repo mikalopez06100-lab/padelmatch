@@ -19,7 +19,7 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pseudo, setPseudo] = useState("");
-  const [niveau, setNiveau] = useState<Niveau>("Débutant");
+  const [niveau, setNiveau] = useState<Niveau>(2.5);
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
