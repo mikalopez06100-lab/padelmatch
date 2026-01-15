@@ -193,7 +193,9 @@ export default function PartiesPage() {
     // Charger les parties depuis Firestore
     async function loadPartiesFromFirestore() {
       try {
+        console.log("🔄 Chargement des parties depuis Firestore...");
         const partiesFirestore = await getParties();
+        console.log("✅ Parties chargées:", partiesFirestore.length);
         // Convertir les parties Firestore au format local
         const partiesConverties: Partie[] = partiesFirestore.map((p: any) => {
           const orga = String(p.organisateurPseudo ?? "Organisateur");
@@ -230,8 +232,21 @@ export default function PartiesPage() {
           };
         });
         setParties(partiesConverties);
-      } catch (error) {
-        console.error("Erreur lors du chargement des parties:", error);
+        partiesPrevRef.current = partiesConverties;
+      } catch (error: any) {
+        console.error("❌ Erreur lors du chargement des parties:", error);
+        console.error("Code d'erreur:", error.code);
+        console.error("Message:", error.message);
+        
+        // Afficher une alerte à l'utilisateur si c'est une erreur critique
+        if (error.code === "permission-denied") {
+          alert("⚠️ Erreur de permission Firestore\n\nLes règles Firestore bloquent l'accès.\nVérifiez que les règles sont déployées correctement.");
+        } else if (error.code === "failed-precondition") {
+          console.warn("Index Firestore manquant - cela devrait être géré automatiquement");
+        } else {
+          console.warn("Fallback vers localStorage...");
+        }
+        
         // Fallback : charger depuis localStorage
         const raw = load<any[]>(PARTIES_KEY, []);
         const repaired: Partie[] = raw.map((p) => {

@@ -93,10 +93,33 @@ export async function getParties(): Promise<Partie[]> {
     console.error("❌ Erreur lors de la récupération des parties:", error);
     console.error("Code d'erreur:", error.code);
     console.error("Message:", error.message);
+    
+    // Si c'est un problème d'index, essayer sans orderBy
+    if (error.code === "failed-precondition") {
+      console.warn("⚠️ Index Firestore manquant, tentative sans tri...");
+      try {
+        const querySnapshot = await getDocs(collection(db, "parties"));
+        const parties = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toMillis?.() || doc.data().createdAt || Date.now(),
+        })) as Partie[];
+        // Trier manuellement côté client
+        parties.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        console.log("✅ Récupération réussie sans index,", parties.length, "parties trouvées");
+        return parties;
+      } catch (fallbackError: any) {
+        console.error("❌ Erreur même sans tri:", fallbackError);
+      }
+    }
+    
     if (error.code === "permission-denied") {
       console.error("⚠️ Permission refusée - Vérifiez les règles Firestore");
+      console.error("👉 Déployez les règles: firebase deploy --only firestore:rules");
     }
-    return [];
+    
+    // En cas d'erreur, retourner un tableau vide mais afficher l'erreur
+    throw error; // Propager l'erreur pour que l'app puisse l'afficher
   }
 }
 
@@ -195,14 +218,44 @@ export async function deletePartie(partieId: string) {
  */
 export function subscribeToParties(callback: (parties: Partie[]) => void) {
   const q = query(collection(db, "parties"), orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snapshot) => {
-    const parties = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toMillis?.() || doc.data().createdAt || Date.now(),
-    })) as Partie[];
-    callback(parties);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const parties = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toMillis?.() || doc.data().createdAt || Date.now(),
+      })) as Partie[];
+      callback(parties);
+    },
+    (error: any) => {
+      console.error("❌ Erreur dans subscribeToParties:", error);
+      if (error.code === "failed-precondition") {
+        console.warn("⚠️ Index Firestore manquant pour orderBy, tentative sans tri...");
+        // Fallback sans orderBy
+        const qFallback = collection(db, "parties");
+        onSnapshot(
+          qFallback,
+          (snapshot) => {
+            const parties = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toMillis?.() || doc.data().createdAt || Date.now(),
+            })) as Partie[];
+            // Trier manuellement
+            parties.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            callback(parties);
+          },
+          (fallbackError: any) => {
+            console.error("❌ Erreur même sans tri:", fallbackError);
+            callback([]);
+          }
+        );
+      } else {
+        callback([]);
+      }
+    }
+  );
 }
 
 // ===== GROUPES =====
