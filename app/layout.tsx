@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { PWARegister } from "./pwa-register";
 import { AuthButton } from "./auth-button";
