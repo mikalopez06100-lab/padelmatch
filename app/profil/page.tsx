@@ -145,6 +145,8 @@ export default function ProfilPage() {
       photoUrl,
       telephone: cleanTelephone || undefined,
       preferenceCommunication,
+      mainDominante: mainDominante || undefined,
+      positionTerrain: positionTerrain || undefined,
     };
 
     saveProfil(profil);
