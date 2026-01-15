@@ -7,6 +7,8 @@ import { formatDateLong, formatTimeShort } from "../../utils/date";
 import { loadProfilsGlobaux, getProfilGlobalByPseudo } from "@/lib/data/profils-globaux";
 import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 import { loadTerrains, type Terrain } from "@/lib/data/terrains";
+import { loadGroupes, getGroupeById } from "@/lib/data/groupes";
+import type { Groupe } from "@/lib/types";
 
 type Participant = {
   pseudo: string;
@@ -131,6 +133,7 @@ export default function MatchPage() {
   const [messageText, setMessageText] = useState("");
   const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
   const [terrains, setTerrains] = useState<Terrain[]>([]);
+  const [groupes, setGroupes] = useState<Groupe[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -173,6 +176,12 @@ export default function MatchPage() {
       }
     }
     loadTerrainsFromFirestore();
+  }, []);
+
+  // Charger les groupes pour vérifier l'appartenance
+  useEffect(() => {
+    const groupesData = loadGroupes();
+    setGroupes(groupesData);
   }, []);
 
   useEffect(() => {
@@ -256,9 +265,23 @@ export default function MatchPage() {
   }
 
   function requestJoin() {
-    if (!partie || !partie.ouverteCommunaute) return;
+    if (!partie) return;
 
     const monPseudo = getMonPseudo();
+    
+    // Vérifier si l'utilisateur peut rejoindre :
+    // 1. Si la partie est ouverte à la communauté
+    // 2. OU si l'utilisateur fait partie du groupe du match
+    const peutRejoindre = partie.ouverteCommunaute || (() => {
+      const groupe = getGroupeById(partie.groupeId);
+      return groupe?.membres?.includes(monPseudo) ?? false;
+    })();
+
+    if (!peutRejoindre) {
+      alert("Vous ne pouvez pas rejoindre ce match. Vous devez faire partie du groupe ou le match doit être ouvert à la communauté.");
+      return;
+    }
+
     const parties = load<Partie[]>(PARTIES_KEY, []);
     const updated = parties.map((p) => {
       if (p.id !== matchId) return p;
@@ -505,40 +528,50 @@ export default function MatchPage() {
       </div>
 
       {/* Barre d'action */}
-      {!complete && !hasDemande && (
-        <div style={{ padding: "0 16px", marginBottom: 20 }}>
-          <div
-            style={{
-              background: "#1f1f1f",
-              borderRadius: 12,
-              padding: 12,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>🕐</span>
-              <span style={{ fontSize: 14, opacity: 0.9 }}>En attente de confirmation</span>
-            </div>
-            <button
-              onClick={requestJoin}
+      {!complete && !hasDemande && !isParticipant && (() => {
+        const monPseudo = getMonPseudo();
+        const peutRejoindre = partie.ouverteCommunaute || (() => {
+          const groupe = getGroupeById(partie.groupeId);
+          return groupe?.membres?.includes(monPseudo) ?? false;
+        })();
+
+        if (!peutRejoindre) return null;
+
+        return (
+          <div style={{ padding: "0 16px", marginBottom: 20 }}>
+            <div
               style={{
-                background: "#10b981",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                padding: "8px 16px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
+                background: "#1f1f1f",
+                borderRadius: 12,
+                padding: 12,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              Se proposer
-            </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span>🕐</span>
+                <span style={{ fontSize: 14, opacity: 0.9 }}>En attente de confirmation</span>
+              </div>
+              <button
+                onClick={requestJoin}
+                style={{
+                  background: "#10b981",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Se proposer
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {isParticipant && (
         <div style={{ padding: "0 16px", marginBottom: 20 }}>

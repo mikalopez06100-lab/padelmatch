@@ -115,7 +115,7 @@ export default function CleanDatabasePage() {
   return (
     <div
       style={{
-        background: "#000",
+        background: "transparent", // Transparent pour voir l'image de fond
         color: "#fff",
         minHeight: "100vh",
         padding: "40px 20px",

@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Image de fond : lecture publique, écriture uniquement par utilisateurs authentifiés
+    match /background/{allPaths=**} {
+      allow read: if true; // Lecture publique pour que l'image soit visible
+      allow write: if request.auth != null; // Écriture uniquement par utilisateurs authentifiés
+    }
+    
+    // Photos de profil : lecture publique, écriture uniquement par le propriétaire
+    match /profils/{userId}/{allPaths=**} {
+      allow read: if true; // Lecture publique pour voir les photos de profil
+      allow write: if request.auth != null && request.auth.uid == userId; // Écriture uniquement par le propriétaire
+    }
+  }
+}

@@ -4,6 +4,7 @@ import "./globals.css";
 import { PWARegister } from "./pwa-register";
 import { AuthButton } from "./auth-button";
 import { Header } from "./header";
+import { BackgroundImage } from "./background-image";
 
 export const metadata: Metadata = {
   title: "PadelMatch",
@@ -26,35 +27,8 @@ export default function RootLayout({
           minHeight: "100vh",
         }}
       >
-        {/* Image de fond avec overlay */}
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 0,
-            backgroundImage: "url('https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'), linear-gradient(135deg, #0a4a2e 0%, #062e1a 100%)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-            backgroundAttachment: "fixed",
-            opacity: 0.2,
-          }}
-        />
-        {/* Overlay sombre pour la lisibilité */}
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.85) 100%)",
-          }}
-        />
+        {/* Image de fond avec overlay - chargée depuis Firebase Storage */}
+        <BackgroundImage />
         {/* Contenu */}
         <div style={{ position: "relative", zIndex: 1 }}>
           <PWARegister />

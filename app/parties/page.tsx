@@ -1156,7 +1156,7 @@ export default function PartiesPage() {
                     + Ajouter un joueur (test)
                   </button>
 
-                  {p.visibilite !== "profil" && (
+                  {p.visibilite !== "profil" && p.organisateurPseudo === monPseudo && (
                     <button
                       onClick={() => toggleOpen(p.id)}
                       style={{
