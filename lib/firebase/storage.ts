@@ -1,9 +1,7 @@
 // Fonctions pour Firebase Storage
 
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import app from "./config";
-
-const storage = getStorage(app);
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "./config";
 
 /**
  * Upload une image de fond et retourne son URL
