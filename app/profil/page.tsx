@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useRef } from "react";
 import type { Profil as ProfilType, Niveau, PreferenceCommunication, MainDominante, PositionTerrain } from "@/lib/types";
-import { updateProfil } from "@/lib/data/auth";
+import { updateProfil, loadCurrentProfil } from "@/lib/data/auth";
+import { getCurrentUser } from "@/lib/firebase/auth";
+import { getProfil } from "@/lib/firebase/firestore";
 import { getAllNiveaux, getCategorieNiveau, formatNiveau, convertOldNiveauToNew } from "@/lib/utils/niveau";
 
 const PROFIL_KEY = "padelmatch_profil_v1";
@@ -160,6 +162,30 @@ export default function ProfilPage() {
     try {
       await saveProfil(profil);
       setSaved(profil);
+      
+      // Recharger depuis Firestore pour s'assurer que tout est synchronisé
+      try {
+        const user = getCurrentUser();
+        if (user) {
+          const updatedProfil = await getProfil(user.uid);
+          if (updatedProfil) {
+            setSaved(updatedProfil);
+            // Mettre à jour les champs si nécessaire
+            const existingNiveau = typeof updatedProfil.niveau === "string" 
+              ? convertOldNiveauToNew(updatedProfil.niveau as any)
+              : updatedProfil.niveau || 2.5;
+            setNiveau(existingNiveau);
+            setTelephone(updatedProfil.telephone || "");
+            setPreferenceCommunication(updatedProfil.preferenceCommunication || "notification");
+            setMainDominante(updatedProfil.mainDominante || "");
+            setPositionTerrain(updatedProfil.positionTerrain || "");
+            console.log("✅ Profil mis à jour depuis Firestore:", updatedProfil);
+          }
+        }
+      } catch (reloadError) {
+        console.warn("⚠️ Impossible de recharger depuis Firestore:", reloadError);
+      }
+      
       alert("Profil enregistré ✅");
     } catch (error) {
       console.error("Erreur lors de l'enregistrement:", error);
