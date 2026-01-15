@@ -8,7 +8,7 @@ import { getTerrainsPersonnalises, createTerrain, updateTerrain, deleteTerrain }
 const TERRAINS_BASE: Omit<Terrain, "id" | "estPersonnalise">[] = [
   // Nice & alentours
   { nom: "Padel Tennis Nice Valrose", ville: "Nice" },
-  { nom: "ULTRA FABRON ", ville: "Nice" },
+  { nom: "ULTRA FABRON", ville: "Nice" },
   { nom: "UrbanPadel Villeneuve Loubet", ville: "Villeneuve-Loubet" },
   { nom: "V Indomitus Padel Nice", ville: "La Trinité" },
   
