@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import type { Profil as ProfilType, Niveau, PreferenceCommunication, MainDominante, PositionTerrain } from "@/lib/types";
+import type { Profil as ProfilType, Niveau, PreferenceCommunication, MainDominante, PositionTerrain, Terrain } from "@/lib/types";
 import { updateProfil, loadCurrentProfil } from "@/lib/data/auth";
 import { getCurrentUser } from "@/lib/firebase/auth";
 import { getProfil } from "@/lib/firebase/firestore";
 import { getAllNiveaux, getCategorieNiveau, formatNiveau, convertOldNiveauToNew } from "@/lib/utils/niveau";
+import { loadTerrains } from "@/lib/data/terrains";
 
 const PROFIL_KEY = "padelmatch_profil_v1";
 const BLOCKS_KEY = "padelmatch_blocks_v1";
@@ -85,27 +86,66 @@ export default function ProfilPage() {
   const [preferenceCommunication, setPreferenceCommunication] = useState<PreferenceCommunication>("notification");
   const [mainDominante, setMainDominante] = useState<MainDominante | "">("");
   const [positionTerrain, setPositionTerrain] = useState<PositionTerrain | "">("");
+  const [terrainFavoriId, setTerrainFavoriId] = useState<string>("");
+  const [terrains, setTerrains] = useState<Terrain[]>([]);
   const [saved, setSaved] = useState<ProfilType | null>(null);
   const [blocks, setBlocks] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const existing = loadProfil();
-    if (existing) {
-      setPseudo(existing.pseudo);
-      // Gérer la migration des anciens niveaux textuels vers numériques
-      const existingNiveau = typeof existing.niveau === "string" 
-        ? convertOldNiveauToNew(existing.niveau as any)
-        : existing.niveau || 2.5;
-      setNiveau(existingNiveau);
-      setPhotoUrl(existing.photoUrl);
-      setTelephone(existing.telephone || "");
-      setPreferenceCommunication(existing.preferenceCommunication || "notification");
-      setMainDominante(existing.mainDominante || "");
-      setPositionTerrain(existing.positionTerrain || "");
-      setSaved(existing);
+    async function loadProfile() {
+      // Charger les terrains
+      try {
+        const terrainsList = await loadTerrains();
+        setTerrains(terrainsList);
+      } catch (error) {
+        console.error("Erreur lors du chargement des terrains:", error);
+      }
+
+      // Charger depuis Firestore si l'utilisateur est connecté
+      try {
+        const user = getCurrentUser();
+        if (user) {
+          const profilFirestore = await getProfil(user.uid);
+          if (profilFirestore) {
+            setPseudo(profilFirestore.pseudo);
+            const existingNiveau = typeof profilFirestore.niveau === "string" 
+              ? convertOldNiveauToNew(profilFirestore.niveau as any)
+              : profilFirestore.niveau || 2.5;
+            setNiveau(existingNiveau);
+            setPhotoUrl(profilFirestore.photoUrl);
+            setTelephone(profilFirestore.telephone || "");
+            setPreferenceCommunication(profilFirestore.preferenceCommunication || "notification");
+            setMainDominante(profilFirestore.mainDominante || "");
+            setPositionTerrain(profilFirestore.positionTerrain || "");
+            setTerrainFavoriId(profilFirestore.terrainFavoriId || "");
+            setSaved(profilFirestore);
+            return;
+          }
+        }
+      } catch (error) {
+        console.warn("⚠️ Impossible de charger depuis Firestore, utilisation du localStorage:", error);
+      }
+
+      // Fallback : charger depuis localStorage
+      const existing = loadProfil();
+      if (existing) {
+        setPseudo(existing.pseudo);
+        const existingNiveau = typeof existing.niveau === "string" 
+          ? convertOldNiveauToNew(existing.niveau as any)
+          : existing.niveau || 2.5;
+        setNiveau(existingNiveau);
+        setPhotoUrl(existing.photoUrl);
+        setTelephone(existing.telephone || "");
+        setPreferenceCommunication(existing.preferenceCommunication || "notification");
+        setMainDominante(existing.mainDominante || "");
+        setPositionTerrain(existing.positionTerrain || "");
+        setTerrainFavoriId(existing.terrainFavoriId || "");
+        setSaved(existing);
+      }
+      setBlocks(loadBlocks());
     }
-    setBlocks(loadBlocks());
+    loadProfile();
   }, []);
 
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
@@ -157,6 +197,7 @@ export default function ProfilPage() {
       preferenceCommunication,
       mainDominante: mainDominante || undefined,
       positionTerrain: positionTerrain || undefined,
+      terrainFavoriId: terrainFavoriId || undefined,
     };
 
     try {
@@ -179,6 +220,7 @@ export default function ProfilPage() {
             setPreferenceCommunication(updatedProfil.preferenceCommunication || "notification");
             setMainDominante(updatedProfil.mainDominante || "");
             setPositionTerrain(updatedProfil.positionTerrain || "");
+            setTerrainFavoriId(updatedProfil.terrainFavoriId || "");
             console.log("✅ Profil mis à jour depuis Firestore:", updatedProfil);
           }
         }
@@ -202,6 +244,7 @@ export default function ProfilPage() {
     setPreferenceCommunication("notification");
     setMainDominante("");
     setPositionTerrain("");
+    setTerrainFavoriId("");
     setSaved(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -415,6 +458,37 @@ export default function ProfilPage() {
           />
           <p style={{ fontSize: 12, opacity: 0.6, color: "#fff", margin: 0 }}>
             Facultatif - Permet aux autres joueurs de vous contacter facilement
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>
+            Terrain favori / Club
+          </label>
+          <select
+            value={terrainFavoriId}
+            onChange={(e) => setTerrainFavoriId(e.target.value)}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: 12,
+              borderRadius: 10,
+              border: "1px solid #2a2a2a",
+              background: "#141414",
+              color: "#fff",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            <option value="" style={{ background: "#141414", color: "#fff" }}>Non spécifié</option>
+            {terrains.map((terrain) => (
+              <option key={terrain.id} value={terrain.id} style={{ background: "#141414", color: "#fff" }}>
+                {terrain.nom} - {terrain.ville}
+              </option>
+            ))}
+          </select>
+          <p style={{ fontSize: 12, opacity: 0.6, color: "#fff", margin: 0 }}>
+            Facultatif - Indique ton terrain ou club préféré
           </p>
         </div>
 

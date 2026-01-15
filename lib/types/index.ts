@@ -95,6 +95,7 @@ export interface Profil {
   preferenceCommunication?: PreferenceCommunication; // Préférence de communication
   mainDominante?: MainDominante; // Droitier ou gaucher
   positionTerrain?: PositionTerrain; // Joueur à droite ou à gauche
+  terrainFavoriId?: string; // ID du terrain favori/club
   // TODO: Migration backend - ajouter userId: string, updatedAt: number
 }
 
