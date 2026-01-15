@@ -72,6 +72,7 @@ export default function ProfilPage() {
   const [pseudo, setPseudo] = useState("");
   const [niveau, setNiveau] = useState<Niveau>("Débutant");
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
+  const [telephone, setTelephone] = useState("");
   const [saved, setSaved] = useState<ProfilType | null>(null);
   const [blocks, setBlocks] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -123,6 +124,8 @@ export default function ProfilPage() {
       return;
     }
 
+    const cleanTelephone = telephone.trim();
+
     const profil: ProfilType = {
       pseudo: clean,
       email: saved.email,
@@ -130,6 +133,7 @@ export default function ProfilPage() {
       friendlyScore: saved?.friendlyScore ?? 50,
       xp: saved?.xp ?? 0,
       photoUrl,
+      telephone: cleanTelephone || undefined,
     };
 
     saveProfil(profil);
@@ -282,6 +286,29 @@ export default function ProfilPage() {
           </select>
         </div>
 
+        <div style={{ display: "grid", gap: 8 }}>
+          <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Téléphone</label>
+          <input
+            type="tel"
+            value={telephone}
+            onChange={(e) => setTelephone(e.target.value)}
+            placeholder="Ex : 06 12 34 56 78"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: 12,
+              borderRadius: 10,
+              border: "1px solid #2a2a2a",
+              background: "#141414",
+              color: "#fff",
+              fontSize: 14,
+            }}
+          />
+          <p style={{ fontSize: 12, opacity: 0.6, color: "#fff", margin: 0 }}>
+            Facultatif - Permet aux autres joueurs de vous contacter facilement
+          </p>
+        </div>
+
         <button
           onClick={onSave}
           style={{
@@ -353,6 +380,7 @@ export default function ProfilPage() {
           <div style={{ opacity: 0.9, color: "#fff", display: "grid", gap: 8, fontSize: 14 }}>
             <div>🤝 Friendly score : {saved.friendlyScore}</div>
             <div>⭐ Points : {saved.xp}</div>
+            {saved.telephone && <div>📞 Téléphone : {saved.telephone}</div>}
           </div>
         </div>
       )}

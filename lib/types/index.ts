@@ -147,6 +147,7 @@ export interface ProfilDocument {
   friendlyScore: number;
   xp: number;
   photoUrl?: string; // URL de l'image (Firebase Storage ou base64 en MVP)
+  telephone?: string; // Numéro de téléphone
   createdAt: number;
   updatedAt: number;
 }
