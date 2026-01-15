@@ -102,6 +102,7 @@ export default function RootLayout({
           </Link>
           </nav>
         </div>
+        <Analytics />
       </body>
     </html>
   );
