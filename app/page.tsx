@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import type { Niveau } from "@/lib/types";
 import { authenticate, createProfil, emailExists, loadCurrentProfil, resetPassword } from "@/lib/data/auth";
 import { Logo } from "./logo";
+import { getAllNiveaux, getCategorieNiveau, formatNiveau } from "@/lib/utils/niveau";
 
-const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
+const NIVEAUX = getAllNiveaux();
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -420,7 +421,7 @@ export default function Home() {
                   </label>
                   <select
                     value={niveau}
-                    onChange={(e) => setNiveau(e.target.value as Niveau)}
+                    onChange={(e) => setNiveau(parseFloat(e.target.value))}
                     required
                     style={{
                       width: "100%",
@@ -435,11 +436,14 @@ export default function Home() {
                       cursor: "pointer",
                     }}
                   >
-                    {NIVEAUX.map((n) => (
-                      <option key={n} value={n} style={{ background: "#141414", color: "#fff" }}>
-                        {n}
-                      </option>
-                    ))}
+                    {NIVEAUX.map((n) => {
+                      const categorie = getCategorieNiveau(n);
+                      return (
+                        <option key={n} value={n} style={{ background: "#141414", color: "#fff" }}>
+                          {formatNiveau(n)} - {categorie}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </>

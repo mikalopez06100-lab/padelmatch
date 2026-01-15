@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getAllProfils } from "@/lib/firebase/firestore";
 import type { Profil } from "@/lib/types";
 import type { Niveau } from "@/lib/types";
+import { getAllNiveaux, getCategorieNiveau, formatNiveau } from "@/lib/utils/niveau";
 
 function getInitials(pseudo: string): string {
   return pseudo
@@ -41,7 +42,7 @@ export default function JoueursPage() {
   const [profils, setProfils] = useState<Profil[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterNiveau, setFilterNiveau] = useState<Niveau | "">("");
+  const [filterNiveau, setFilterNiveau] = useState<Niveau | null>(null);
 
   useEffect(() => {
     async function loadProfils() {
@@ -237,7 +238,7 @@ export default function JoueursPage() {
                   {p.pseudo}
                 </Link>
                 <div style={{ fontSize: 13, opacity: 0.8, color: "#fff", marginBottom: 4 }}>
-                  🎾 {p.niveau}
+                  🎾 {typeof p.niveau === "number" ? `${formatNiveau(p.niveau)} - ${getCategorieNiveau(p.niveau)}` : p.niveau}
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.7, color: "#fff", display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <span>⭐ Friendly {p.friendlyScore}/100</span>
@@ -252,14 +253,13 @@ export default function JoueursPage() {
                   borderRadius: 20,
                   fontSize: 12,
                   fontWeight: 600,
-                  background:
-                    p.niveau === "Compétitif"
-                      ? "#ef4444"
-                      : p.niveau === "Confirmé"
-                        ? "#f59e0b"
-                        : p.niveau === "Intermédiaire"
-                          ? "#3b82f6"
-                          : "#10b981",
+                background: (() => {
+                  const niveauNum = typeof p.niveau === "number" ? p.niveau : (p.niveau === "Compétitif" ? 6.5 : p.niveau === "Confirmé" ? 4.5 : p.niveau === "Intermédiaire" ? 2.5 : 1.0);
+                  if (niveauNum >= 6.0) return "#ef4444"; // Expert
+                  if (niveauNum >= 4.0) return "#f59e0b"; // Confirmé
+                  if (niveauNum >= 2.0) return "#3b82f6"; // Intermédiaire
+                  return "#10b981"; // Débutant
+                })(),
                   color: "#fff",
                   flexShrink: 0,
                 }}

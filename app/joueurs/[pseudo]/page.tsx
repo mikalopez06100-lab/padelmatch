@@ -161,7 +161,7 @@ export default function JoueurProfilPage() {
                 marginBottom: 12,
               }}
             >
-              🎾 {profil.niveau}
+              🎾 {typeof profil.niveau === "number" ? `${typeof profil.niveau === "number" ? profil.niveau.toFixed(1) : profil.niveau} - ${profil.niveau >= 6.0 ? "Expert" : profil.niveau >= 4.0 ? "Confirmé" : profil.niveau >= 2.0 ? "Intermédiaire" : "Débutant"}` : profil.niveau}
             </div>
             <div style={{ fontSize: 14, opacity: 0.8, color: "#fff", display: "flex", gap: 16, flexWrap: "wrap" }}>
               <span>⭐ Friendly {profil.friendlyScore}/100</span>
