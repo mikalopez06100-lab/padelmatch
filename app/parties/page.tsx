@@ -135,7 +135,7 @@ export default function PartiesPage() {
   const router = useRouter();
   const [groupes, setGroupes] = useState<Groupe[]>([]);
   const [parties, setParties] = useState<Partie[]>([]);
-  const [mode, setMode] = useState<"organisateur" | "joueur">("organisateur");
+  const [mode, setMode] = useState<"organisateur" | "joueur">("joueur");
   const [blocks, setBlocks] = useState<string[]>([]);
   const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
 
@@ -542,7 +542,8 @@ export default function PartiesPage() {
         p.visibilite === "communaute" ||
         (p.visibilite === "profil" && p.cibleProfilPseudo === monPseudo) ||
         (p.visibilite === "groupe" && (() => {
-          const groupe = getGroupeById(p.groupeId);
+          // Chercher le groupe dans les groupes chargés depuis Firestore
+          const groupe = groupes.find(g => g.id === p.groupeId);
           return groupe?.membres?.includes(monPseudo) ?? false;
         })());
       
