@@ -8,25 +8,24 @@ import { getTerrainsPersonnalises, createTerrain, updateTerrain, deleteTerrain }
 const TERRAINS_BASE: Omit<Terrain, "id" | "estPersonnalise">[] = [
   // Nice & alentours
   { nom: "Padel Tennis Nice Valrose", ville: "Nice" },
-  { nom: "ULTRA FABRON - PADEL et FOOTBALL", ville: "Nice" },
-  { nom: "Gsem Tennis", ville: "Nice" },
+  { nom: "ULTRA FABRON ", ville: "Nice" },
   { nom: "UrbanPadel Villeneuve Loubet", ville: "Villeneuve-Loubet" },
-  { nom: "V Indomitus Padel Nice la Trinité", ville: "La Trinité" },
+  { nom: "V Indomitus Padel Nice", ville: "La Trinité" },
   
   // Cannes — Mougins — Grasse
-  { nom: "SAS PADEL RIVIERA", ville: "Mougins" },
-  { nom: "ALL IN PADEL Mougins", ville: "Mougins" },
+  { nom: "Padel Riviera", ville: "Mougins" },
+  { nom: "All in Padel", ville: "Mougins" },
   { nom: "Tennis Club de Grasse", ville: "Grasse" },
   
   // Antibes, Vence, Èze
   { nom: "Tennis Padel Club la Roseraie Antibes", ville: "Antibes" },
-  { nom: "Leçons de Tennis & Padel au Cap d'Antibes", ville: "Antibes" },
+  { nom: "Padel au Cap d'Antibes", ville: "Antibes" },
   { nom: "Vence Tennis Padel Club (VTPC)", ville: "Vence" },
   { nom: "Padel Eze - Côte d'Azur", ville: "Èze" },
   { nom: "Azur Calcetto", ville: "Sainte-Agnès" },
   { nom: "Tennis Padel Club Montaleigne", ville: "Cagnes-sur-Mer" },
-  { nom: "US CAGNES - TENNIS, PADEL et MULTI‑SPORTS", ville: "Cagnes-sur-Mer" },
-  { nom: "Dynamic'Sports : Padel, Tennis, Trail...", ville: "Tourrette-Levens" },
+  { nom: "US CAGNES", ville: "Cagnes-sur-Mer" },
+  { nom: "Dynamic'Sports", ville: "Tourrette-Levens" },
   
   // Grand complexe
   { nom: "Galactic Padel", ville: "Contes" },

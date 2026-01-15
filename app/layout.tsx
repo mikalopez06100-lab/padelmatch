@@ -22,7 +22,7 @@ export default function RootLayout({
         style={{
           margin: 0,
           fontFamily: "system-ui",
-          background: "#000",
+          background: "transparent",
           position: "relative",
           minHeight: "100vh",
         }}

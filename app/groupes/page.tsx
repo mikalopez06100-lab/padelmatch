@@ -109,7 +109,7 @@ export default function GroupesPage() {
   }
 
   return (
-    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
+    <div style={{ background: "transparent", color: "#fff", minHeight: "100vh", padding: "16px", paddingBottom: 80, boxSizing: "border-box" }}>
       <h1 style={{ fontSize: 22, marginBottom: 8, color: "#fff" }}>👥 Mes groupes</h1>
       <p style={{ opacity: 0.7, marginTop: 0, color: "#fff", fontSize: 14 }}>
         Crée un groupe et sélectionne les profils à intégrer.
