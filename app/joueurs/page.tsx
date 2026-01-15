@@ -212,13 +212,36 @@ export default function JoueursPage() {
                   fontSize: 20,
                   fontWeight: 600,
                   color: "#fff",
-                  background: p.photoUrl
-                    ? `url(${p.photoUrl}) center/cover`
-                    : getAvatarColor(p.pseudo),
+                  background: !p.photoUrl ? getAvatarColor(p.pseudo) : "transparent",
+                  backgroundImage: p.photoUrl ? `url(${p.photoUrl})` : "none",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  overflow: "hidden",
                   flexShrink: 0,
                 }}
               >
-                {!p.photoUrl && getInitials(p.pseudo)}
+                {p.photoUrl ? (
+                  <img
+                    src={p.photoUrl}
+                    alt={`Photo de ${p.pseudo}`}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                    onError={(e) => {
+                      // En cas d'erreur de chargement de l'image, afficher les initiales
+                      console.warn("Erreur de chargement de l'image pour", p.pseudo);
+                      e.currentTarget.style.display = "none";
+                      if (e.currentTarget.parentElement) {
+                        e.currentTarget.parentElement.style.background = getAvatarColor(p.pseudo);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div>{getInitials(p.pseudo)}</div>
+                )}
               </div>
 
               {/* Infos */}

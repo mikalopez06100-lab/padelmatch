@@ -36,7 +36,9 @@ function getAvatarColor(pseudo: string): string {
 export default function JoueurProfilPage() {
   const params = useParams();
   const router = useRouter();
-  const pseudo = typeof params.pseudo === "string" ? params.pseudo : "";
+  // Décoder le pseudo depuis l'URL (il peut être encodé avec encodeURIComponent)
+  const pseudoEncoded = typeof params.pseudo === "string" ? params.pseudo : "";
+  const pseudo = pseudoEncoded ? decodeURIComponent(pseudoEncoded) : "";
   const [profil, setProfil] = useState<Profil | null>(null);
   const [stats, setStats] = useState<MatchStats | null>(null);
   const [isCurrentUser, setIsCurrentUser] = useState(false);
@@ -48,14 +50,30 @@ export default function JoueurProfilPage() {
     async function loadProfil() {
       try {
         setLoading(true);
+        console.log("🔄 Chargement du profil pour le pseudo:", pseudo);
         const profils = await getAllProfils();
-        const profilTrouve = profils.find((p) => p.pseudo.toLowerCase() === pseudo.toLowerCase());
+        console.log(`📋 ${profils.length} profils récupérés pour la recherche`);
+        
+        // Recherche exacte avec comparaison insensible à la casse et aux espaces
+        const profilTrouve = profils.find((p) => {
+          const pseudoProfil = p.pseudo.trim().toLowerCase();
+          const pseudoRecherche = pseudo.trim().toLowerCase();
+          const match = pseudoProfil === pseudoRecherche;
+          if (!match) {
+            console.log(`⚠️ Pseudo non correspondant: "${p.pseudo}" !== "${pseudo}"`);
+          }
+          return match;
+        });
         
         if (!profilTrouve) {
-          alert("Profil non trouvé");
+          console.error(`❌ Profil non trouvé pour le pseudo: "${pseudo}"`);
+          console.log("📋 Pseudos disponibles:", profils.map(p => p.pseudo));
+          alert(`Profil non trouvé pour "${pseudo}"`);
           router.push("/joueurs");
           return;
         }
+
+        console.log("✅ Profil trouvé:", { pseudo: profilTrouve.pseudo, email: profilTrouve.email, photoUrl: profilTrouve.photoUrl });
 
         setProfil(profilTrouve);
 
@@ -135,6 +153,22 @@ export default function JoueurProfilPage() {
                 src={profil.photoUrl}
                 alt={`Photo de ${profil.pseudo}`}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  // En cas d'erreur de chargement de l'image, afficher les initiales
+                  console.warn("Erreur de chargement de l'image pour", profil.pseudo);
+                  const img = e.currentTarget;
+                  const parent = img.parentElement;
+                  if (parent) {
+                    img.style.display = "none";
+                    parent.style.background = getAvatarColor(profil.pseudo);
+                    // Créer un div avec les initiales
+                    const initialsDiv = document.createElement("div");
+                    initialsDiv.style.cssText = "color: #fff; font-weight: 600; font-size: 36px;";
+                    initialsDiv.textContent = getInitials(profil.pseudo);
+                    parent.appendChild(initialsDiv);
+                  }
+                }}
+                key={profil.photoUrl} // Force le rechargement si l'URL change
               />
             ) : (
               <div style={{ color: "#fff", fontWeight: 600, fontSize: 36 }}>{getInitials(profil.pseudo)}</div>
