@@ -15,6 +15,7 @@ type Groupe = {
   id: string;
   nom: string;
   zone: string;
+  membres?: string[]; // Pseudos des membres du groupe
   createdAt: number;
 };
 
@@ -532,9 +533,20 @@ export default function PartiesPage() {
 
     const updatedParties = parties.map((p) => {
       if (p.id !== id) return p;
-      // Vérifier la visibilité : on ne peut rejoindre que si communaute ou si c'est pour notre profil
-      if (p.visibilite !== "communaute" && !(p.visibilite === "profil" && p.cibleProfilPseudo === monPseudo))
-        return p;
+      
+      // Vérifier la visibilité : on peut rejoindre si :
+      // 1. Partie ouverte à la communauté
+      // 2. Partie profil et on est la cible
+      // 3. Partie groupe et on est membre du groupe
+      const peutRejoindre =
+        p.visibilite === "communaute" ||
+        (p.visibilite === "profil" && p.cibleProfilPseudo === monPseudo) ||
+        (p.visibilite === "groupe" && (() => {
+          const groupe = getGroupeById(p.groupeId);
+          return groupe?.membres?.includes(monPseudo) ?? false;
+        })());
+      
+      if (!peutRejoindre) return p;
       if (p.participants.length >= p.placesTotal) return p;
 
       // Si déjà dedans ou déjà demandé, on ne refait pas
@@ -1184,12 +1196,25 @@ export default function PartiesPage() {
                       if (complete) return;
 
                       const monPseudo = getMonPseudo();
+                      
+                      // Vérifier si l'utilisateur peut rejoindre :
+                      // 1. Si la partie est ouverte à la communauté
+                      // 2. OU si c'est une partie profil et l'utilisateur est la cible
+                      // 3. OU si c'est une partie groupe et l'utilisateur est membre du groupe
                       const peutRejoindre =
-                        p.visibilite === "communaute" || (p.visibilite === "profil" && p.cibleProfilPseudo === monPseudo);
+                        p.visibilite === "communaute" ||
+                        (p.visibilite === "profil" && p.cibleProfilPseudo === monPseudo) ||
+                        (p.visibilite === "groupe" && (() => {
+                          // Chercher le groupe dans les groupes chargés depuis Firestore
+                          const groupe = groupes.find(g => g.id === p.groupeId);
+                          return groupe?.membres?.includes(monPseudo) ?? false;
+                        })());
 
                       if (!peutRejoindre) {
                         if (p.visibilite === "profil") {
                           alert(`Cette partie est proposée uniquement à ${p.cibleProfilPseudo}.`);
+                        } else if (p.visibilite === "groupe") {
+                          alert("Vous ne faites pas partie du groupe de cette partie.");
                         } else {
                           alert("Cette partie est privée. Clique d'abord sur \"Ouvrir à la communauté\".");
                         }
