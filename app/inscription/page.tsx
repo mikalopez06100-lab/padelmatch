@@ -14,7 +14,7 @@ export default function InscriptionPage() {
 
   // Affichage pendant la redirection
   return (
-    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", padding: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ background: "transparent", color: "#fff", minHeight: "100vh", padding: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ textAlign: "center" }}>
         <p style={{ color: "#fff", fontSize: 16 }}>Redirection...</p>
       </div>

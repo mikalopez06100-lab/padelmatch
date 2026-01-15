@@ -153,7 +153,7 @@ export default function MigrationPage() {
   return (
     <div
       style={{
-        background: "#000",
+        background: "transparent",
         color: "#fff",
         minHeight: "100vh",
         padding: "24px 16px",
