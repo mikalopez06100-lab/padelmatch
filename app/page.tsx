@@ -97,8 +97,8 @@ export default function Home() {
             password: cleanPassword,
             niveau,
           });
-          alert("Inscription réussie ✅\nBienvenue sur PadelMatch !");
-          router.push("/parties");
+          alert("Inscription réussie ✅\nBienvenue sur PadelMatch !\nComplétez votre profil pour commencer.");
+          router.push("/profil");
           router.refresh();
         } catch (error: any) {
           if (error.code === "auth/email-already-in-use") {
