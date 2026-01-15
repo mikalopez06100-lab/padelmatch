@@ -22,10 +22,16 @@ function loadProfil(): ProfilType | null {
   }
 }
 
-function saveProfil(p: ProfilType) {
+async function saveProfil(p: ProfilType) {
   localStorage.setItem(PROFIL_KEY, JSON.stringify(p));
-  // Mettre à jour dans la liste globale des profils (avec gestion du passwordHash)
-  updateProfil(p);
+  // Mettre à jour dans Firestore et la liste globale des profils (avec gestion du passwordHash)
+  try {
+    await updateProfil(p);
+    console.log("✅ Profil sauvegardé dans Firestore");
+  } catch (error) {
+    console.error("❌ Erreur lors de la sauvegarde dans Firestore:", error);
+    // On continue quand même car localStorage est déjà sauvegardé
+  }
 }
 
 function loadBlocks(): string[] {
@@ -75,6 +81,8 @@ export default function ProfilPage() {
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [telephone, setTelephone] = useState("");
   const [preferenceCommunication, setPreferenceCommunication] = useState<PreferenceCommunication>("notification");
+  const [mainDominante, setMainDominante] = useState<MainDominante | "">("");
+  const [positionTerrain, setPositionTerrain] = useState<PositionTerrain | "">("");
   const [saved, setSaved] = useState<ProfilType | null>(null);
   const [blocks, setBlocks] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,7 +130,7 @@ export default function ProfilPage() {
     reader.readAsDataURL(file);
   }
 
-  function onSave() {
+  async function onSave() {
     const clean = pseudo.trim();
     if (clean.length < 2) {
       alert("Pseudo trop court (min 2 caractères).");
@@ -149,9 +157,14 @@ export default function ProfilPage() {
       positionTerrain: positionTerrain || undefined,
     };
 
-    saveProfil(profil);
-    setSaved(profil);
-    alert("Profil enregistré ✅");
+    try {
+      await saveProfil(profil);
+      setSaved(profil);
+      alert("Profil enregistré ✅");
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement:", error);
+      alert("Erreur lors de l'enregistrement. Vérifiez la console pour plus de détails.");
+    }
   }
 
   function onReset() {
