@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { showNotification } from "../utils/notifications";
@@ -138,6 +138,7 @@ export default function PartiesPage() {
   const [mode, setMode] = useState<"organisateur" | "joueur">("joueur");
   const [blocks, setBlocks] = useState<string[]>([]);
   const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
+  const partiesPrevRef = useRef<Partie[]>([]);
 
   // Form state
   const [groupeId, setGroupeId] = useState("");
@@ -275,6 +276,64 @@ export default function PartiesPage() {
 
     // S'abonner aux mises à jour en temps réel
     const unsubscribe = subscribeToParties((partiesFirestore) => {
+      const monPseudo = getMonPseudo();
+      const partiesPrecedentes = partiesPrevRef.current;
+      
+      // Détecter les nouvelles demandes pour notifier l'organisateur
+      // Détecter les nouvelles participations pour notifier le joueur
+      partiesFirestore.forEach((pFirestore: any) => {
+        const partieId = pFirestore.id;
+        const partiePrecedente = partiesPrecedentes.find((pp) => pp.id === partieId);
+        
+        if (!partiePrecedente) return; // Première fois qu'on charge, pas de notification
+        
+        // Détecter les nouvelles demandes (pour notifier l'organisateur)
+        if (String(pFirestore.organisateurPseudo) === monPseudo) {
+          const demandesFirestore: Demande[] = Array.isArray(pFirestore.demandes)
+            ? pFirestore.demandes.map((d: any) => ({
+                pseudo: String(d?.pseudo ?? "Candidat"),
+                createdAt: Number(d?.createdAt ?? Date.now()),
+              }))
+            : [];
+          
+          const demandesPrecedentes = partiePrecedente.demandes || [];
+          
+          // Trouver les nouvelles demandes
+          demandesFirestore.forEach((demandeFirestore) => {
+            const existeDeja = demandesPrecedentes.some((dp) => dp.pseudo === demandeFirestore.pseudo);
+            if (!existeDeja && demandeFirestore.pseudo !== monPseudo) {
+              // Nouvelle demande détectée - notifier l'organisateur
+              showNotification("📩 Nouvelle demande de participation", {
+                body: `${demandeFirestore.pseudo} souhaite rejoindre ${String(pFirestore.groupeNom ?? "votre partie")}`,
+                tag: `demande-${partieId}-${demandeFirestore.pseudo}`,
+              });
+            }
+          });
+        }
+        
+        // Détecter les nouvelles participations (pour notifier le joueur)
+        const participantsFirestore: Participant[] = Array.isArray(pFirestore.participants)
+          ? pFirestore.participants.map((x: any) => ({
+              pseudo: String(x?.pseudo ?? "Joueur"),
+              role: (x?.role === "organisateur" ? "organisateur" : "joueur") as Participant["role"],
+            }))
+          : [];
+        
+        const participantsPrecedents = partiePrecedente.participants || [];
+        
+        // Vérifier si l'utilisateur a été ajouté comme participant
+        const etaitParticipant = participantsPrecedents.some((pp) => pp.pseudo === monPseudo);
+        const estMaintenantParticipant = participantsFirestore.some((pf) => pf.pseudo === monPseudo);
+        
+        if (!etaitParticipant && estMaintenantParticipant && String(pFirestore.organisateurPseudo) !== monPseudo) {
+          // L'utilisateur a été accepté - notifier le joueur
+          showNotification("✅ Participation acceptée !", {
+            body: `Vous avez été accepté dans ${String(pFirestore.groupeNom ?? "la partie")}`,
+            tag: `accepte-${partieId}-${monPseudo}`,
+          });
+        }
+      });
+      
       const partiesConverties: Partie[] = partiesFirestore.map((p: any) => {
         const orga = String(p.organisateurPseudo ?? "Organisateur");
         const participants: Participant[] = Array.isArray(p.participants)
@@ -309,6 +368,9 @@ export default function PartiesPage() {
           createdAt: typeof p.createdAt === "number" ? p.createdAt : Date.now(),
         };
       });
+      
+      // Mettre à jour la référence pour la prochaine comparaison
+      partiesPrevRef.current = partiesConverties;
       setParties(partiesConverties);
     });
 
@@ -563,8 +625,9 @@ export default function PartiesPage() {
     const partieAvant = parties.find((p) => p.id === id);
     const avaitDejaDemande = partieAvant?.demandes.some((d) => d.pseudo === monPseudo);
     
-    if (demandeAjoutee && !avaitDejaDemande) {
+    if (demandeAjoutee && !avaitDejaDemande && partieModifiee) {
       alert("✅ Demande envoyée ! L'organisateur va valider votre participation.");
+      // La notification à l'organisateur sera gérée par subscribeToParties
     }
     
     persist(updatedParties);
@@ -599,12 +662,23 @@ export default function PartiesPage() {
       });
     }
 
-    // Notification pour l'organisateur (confirmation)
+    // Notifier le joueur que sa demande a été acceptée
+    // (Pour une vraie notification push, il faudrait Firebase Cloud Messaging)
     if (partie) {
-      showNotification(`✅ Joueur accepté`, {
-        body: `${pseudo} a rejoint ${partie.groupeNom}`,
-        tag: `accept-${matchId}-${pseudo}`,
-      });
+      const monPseudo = getMonPseudo();
+      if (pseudo === monPseudo) {
+        // Le joueur accepté reçoit une notification
+        showNotification("✅ Participation acceptée !", {
+          body: `Vous avez été accepté dans ${partie.groupeNom}`,
+          tag: `accepte-${matchId}-${pseudo}`,
+        });
+      } else {
+        // L'organisateur reçoit une confirmation
+        showNotification(`✅ Joueur accepté`, {
+          body: `${pseudo} a rejoint ${partie.groupeNom}`,
+          tag: `accept-${matchId}-${pseudo}`,
+        });
+      }
     }
 
     // Note: Pour notifier le joueur accepté, il faudrait un système de polling

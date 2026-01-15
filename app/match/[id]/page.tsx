@@ -9,6 +9,8 @@ import type { ProfilGlobal } from "@/lib/data/profils-globaux";
 import { loadTerrains, type Terrain } from "@/lib/data/terrains";
 import { loadGroupes, getGroupeById } from "@/lib/data/groupes";
 import type { Groupe } from "@/lib/types";
+import { showNotification } from "../../utils/notifications";
+import { subscribeToParties, updatePartie as updatePartieFirestore } from "@/lib/firebase/firestore";
 
 type Participant = {
   pseudo: string;
@@ -135,6 +137,7 @@ export default function MatchPage() {
   const [terrains, setTerrains] = useState<Terrain[]>([]);
   const [groupes, setGroupes] = useState<Groupe[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const partiePrecedenteRef = useRef<Partie | null>(null);
 
   useEffect(() => {
     const parties = load<Partie[]>(PARTIES_KEY, []);
@@ -145,6 +148,7 @@ export default function MatchPage() {
     }
 
     setPartie(found);
+    partiePrecedenteRef.current = found;
 
     const monPseudo = getMonPseudo();
     const participant = found.participants.find((p) => p.pseudo === monPseudo);
@@ -183,6 +187,89 @@ export default function MatchPage() {
     const groupesData = loadGroupes();
     setGroupes(groupesData);
   }, []);
+
+  // S'abonner aux changements Firestore pour détecter les nouvelles participations
+  useEffect(() => {
+    const monPseudo = getMonPseudo();
+    
+    const unsubscribe = subscribeToParties((partiesFirestore) => {
+      const partieFirestore = partiesFirestore.find((p: any) => p.id === matchId);
+      if (!partieFirestore) return;
+
+      const partiePrecedente = partiePrecedenteRef.current;
+      if (!partiePrecedente) {
+        // Première fois - initialiser la référence
+        const partieMiseAJour: Partie = {
+          id: matchId,
+          groupeId: String(partieFirestore.groupeId ?? ""),
+          groupeNom: String(partieFirestore.groupeNom ?? "Groupe"),
+          zone: String(partieFirestore.zone ?? "Nice"),
+          dateISO: String(partieFirestore.dateISO ?? ""),
+          format: (partieFirestore.format === "Compétitif" || partieFirestore.format === "Mixte" ? partieFirestore.format : "Amical") as any,
+          placesTotal: Number(partieFirestore.placesTotal ?? 4),
+          terrainId: partieFirestore.terrainId ? String(partieFirestore.terrainId) : undefined,
+          organisateurPseudo: String(partieFirestore.organisateurPseudo ?? "Organisateur"),
+          participants: Array.isArray(partieFirestore.participants)
+            ? partieFirestore.participants.map((x: any) => ({
+                pseudo: String(x?.pseudo ?? "Joueur"),
+                role: (x?.role === "organisateur" ? "organisateur" : "joueur") as Participant["role"],
+              }))
+            : [],
+          ouverteCommunaute: Boolean(partieFirestore.ouverteCommunaute ?? false),
+          demandes: Array.isArray(partieFirestore.demandes)
+            ? partieFirestore.demandes.map((d: any) => ({
+                pseudo: String(d?.pseudo ?? "Candidat"),
+                createdAt: Number(d?.createdAt ?? Date.now()),
+              }))
+            : [],
+          createdAt: typeof partieFirestore.createdAt === "number" ? partieFirestore.createdAt : Date.now(),
+        };
+        partiePrecedenteRef.current = partieMiseAJour;
+        return;
+      }
+
+      const participantsFirestore: Participant[] = Array.isArray(partieFirestore.participants)
+        ? partieFirestore.participants.map((x: any) => ({
+            pseudo: String(x?.pseudo ?? "Joueur"),
+            role: (x?.role === "organisateur" ? "organisateur" : "joueur") as Participant["role"],
+          }))
+        : [];
+
+      // Vérifier si l'utilisateur a été ajouté comme participant
+      const etaitParticipant = partiePrecedente.participants.some((pp) => pp.pseudo === monPseudo);
+      const estMaintenantParticipant = participantsFirestore.some((pf) => pf.pseudo === monPseudo);
+
+      if (!etaitParticipant && estMaintenantParticipant && String(partieFirestore.organisateurPseudo) !== monPseudo) {
+        // L'utilisateur a été accepté - notifier le joueur
+        showNotification("✅ Participation acceptée !", {
+          body: `Vous avez été accepté dans ${String(partieFirestore.groupeNom ?? "la partie")}`,
+          tag: `accepte-${matchId}-${monPseudo}`,
+        });
+      }
+      
+      // Mettre à jour la référence
+      const partieMiseAJour: Partie = {
+        ...partiePrecedente,
+        participants: participantsFirestore,
+        demandes: Array.isArray(partieFirestore.demandes)
+          ? partieFirestore.demandes.map((d: any) => ({
+              pseudo: String(d?.pseudo ?? "Candidat"),
+              createdAt: Number(d?.createdAt ?? Date.now()),
+            }))
+          : [],
+      };
+      partiePrecedenteRef.current = partieMiseAJour;
+      
+      // Mettre à jour l'état si la partie est chargée
+      if (partie) {
+        setPartie(partieMiseAJour);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [matchId, partie]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -248,9 +335,10 @@ export default function MatchPage() {
     setMessageText("");
   }
 
-  function acceptRequest(pseudo: string) {
+  async function acceptRequest(pseudo: string) {
     if (!partie) return;
 
+    const monPseudo = getMonPseudo();
     const parties = load<Partie[]>(PARTIES_KEY, []);
     const updated = parties.map((p) => {
       if (p.id !== matchId) return p;
@@ -261,7 +349,36 @@ export default function MatchPage() {
 
       return { ...p, demandes, participants };
     });
+    
+    // Notifier le joueur que sa demande a été acceptée
+    const partieModifiee = updated.find((p) => p.id === matchId);
+    if (partieModifiee && pseudo === monPseudo) {
+      // Le joueur accepté reçoit une notification
+      showNotification("✅ Participation acceptée !", {
+        body: `Vous avez été accepté dans ${partie.groupeNom}`,
+        tag: `accepte-${matchId}-${pseudo}`,
+      });
+    } else if (partieModifiee) {
+      // L'organisateur reçoit une confirmation
+      showNotification("✅ Joueur accepté", {
+        body: `${pseudo} a rejoint ${partie.groupeNom}`,
+        tag: `accept-${matchId}-${pseudo}`,
+      });
+    }
+    
     persistParties(updated);
+
+    // Sauvegarder dans Firestore pour que subscribeToParties détecte le changement
+    if (partieModifiee) {
+      try {
+        await updatePartieFirestore(matchId, {
+          demandes: partieModifiee.demandes,
+          participants: partieModifiee.participants,
+        });
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde dans Firestore:", error);
+      }
+    }
   }
 
   function requestJoin() {
@@ -299,8 +416,9 @@ export default function MatchPage() {
     const partieModifiee = updated.find((p) => p.id === matchId);
     const demandeAjoutee = partieModifiee && partieModifiee.demandes.some((d) => d.pseudo === monPseudo);
     
-    if (demandeAjoutee && !avaitDejaDemande) {
+    if (demandeAjoutee && !avaitDejaDemande && partieModifiee) {
       alert("✅ Demande envoyée ! L'organisateur va valider votre participation.");
+      // La notification à l'organisateur sera gérée par subscribeToParties dans parties/page.tsx
     }
     
     persistParties(updated);
