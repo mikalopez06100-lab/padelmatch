@@ -71,7 +71,7 @@ function getAvatarColor(pseudo: string): string {
 
 export default function ProfilPage() {
   const [pseudo, setPseudo] = useState("");
-  const [niveau, setNiveau] = useState<Niveau>("Débutant");
+  const [niveau, setNiveau] = useState<Niveau>(2.5);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [telephone, setTelephone] = useState("");
   const [preferenceCommunication, setPreferenceCommunication] = useState<PreferenceCommunication>("notification");
