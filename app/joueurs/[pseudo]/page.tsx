@@ -77,13 +77,13 @@ export default function JoueurProfilPage() {
 
         setProfil(profilTrouve);
 
-        // Calculer les statistiques
-        const statistiques = calculateMatchStats(pseudo);
+        // Calculer les statistiques (utiliser le pseudo du profil trouvé pour éviter les problèmes d'encodage)
+        const statistiques = calculateMatchStats(profilTrouve.pseudo);
         setStats(statistiques);
 
-        // Vérifier si c'est le profil de l'utilisateur connecté
+        // Vérifier si c'est le profil de l'utilisateur connecté (comparer avec trim pour éviter les espaces)
         const currentProfil = loadCurrentProfilSync();
-        setIsCurrentUser(currentProfil?.pseudo.toLowerCase() === pseudo.toLowerCase());
+        setIsCurrentUser(currentProfil?.pseudo.trim().toLowerCase() === profilTrouve.pseudo.trim().toLowerCase());
       } catch (error) {
         console.error("Erreur lors du chargement du profil:", error);
         alert("Erreur lors du chargement du profil");
