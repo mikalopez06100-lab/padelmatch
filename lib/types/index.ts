@@ -81,6 +81,7 @@ export interface ProfilComplet {
   preferenceCommunication?: PreferenceCommunication; // Préférence de communication
   mainDominante?: MainDominante; // Droitier ou gaucher
   positionTerrain?: PositionTerrain; // Joueur à droite ou à gauche
+  terrainFavoriId?: string; // ID du terrain favori/club
 }
 
 // Profil utilisateur (sans passwordHash - pour localStorage local)
@@ -164,6 +165,7 @@ export interface ProfilDocument {
   preferenceCommunication?: PreferenceCommunication; // Préférence de communication
   mainDominante?: MainDominante; // Droitier ou gaucher
   positionTerrain?: PositionTerrain; // Joueur à droite ou à gauche
+  terrainFavoriId?: string; // ID du terrain favori/club
   createdAt: number;
   updatedAt: number;
 }
