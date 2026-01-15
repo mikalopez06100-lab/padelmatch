@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import type { Profil as ProfilType, Niveau } from "@/lib/types";
+import type { Profil as ProfilType, Niveau, PreferenceCommunication, MainDominante, PositionTerrain } from "@/lib/types";
 import { updateProfil } from "@/lib/data/auth";
+import { getAllNiveaux, getCategorieNiveau, formatNiveau, convertOldNiveauToNew } from "@/lib/utils/niveau";
 
 const PROFIL_KEY = "padelmatch_profil_v1";
 const BLOCKS_KEY = "padelmatch_blocks_v1";
 
-const NIVEAUX: Niveau[] = ["Débutant", "Intermédiaire", "Confirmé", "Compétitif"];
+const NIVEAUX = getAllNiveaux();
 
 function loadProfil(): ProfilType | null {
   try {
@@ -82,10 +83,16 @@ export default function ProfilPage() {
     const existing = loadProfil();
     if (existing) {
       setPseudo(existing.pseudo);
-      setNiveau(existing.niveau);
+      // Gérer la migration des anciens niveaux textuels vers numériques
+      const existingNiveau = typeof existing.niveau === "string" 
+        ? convertOldNiveauToNew(existing.niveau as any)
+        : existing.niveau || 2.5;
+      setNiveau(existingNiveau);
       setPhotoUrl(existing.photoUrl);
       setTelephone(existing.telephone || "");
       setPreferenceCommunication(existing.preferenceCommunication || "notification");
+      setMainDominante(existing.mainDominante || "");
+      setPositionTerrain(existing.positionTerrain || "");
       setSaved(existing);
     }
     setBlocks(loadBlocks());
@@ -148,10 +155,12 @@ export default function ProfilPage() {
   function onReset() {
     localStorage.removeItem(PROFIL_KEY);
     setPseudo("");
-    setNiveau("Débutant");
+    setNiveau(2.5);
     setPhotoUrl(undefined);
     setTelephone("");
     setPreferenceCommunication("notification");
+    setMainDominante("");
+    setPositionTerrain("");
     setSaved(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -272,7 +281,7 @@ export default function ProfilPage() {
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Niveau</label>
           <select
             value={niveau}
-            onChange={(e) => setNiveau(e.target.value as Niveau)}
+            onChange={(e) => setNiveau(parseFloat(e.target.value))}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -284,12 +293,65 @@ export default function ProfilPage() {
               fontSize: 14,
             }}
           >
-            {NIVEAUX.map((n) => (
-              <option key={n} value={n} style={{ background: "#141414", color: "#fff" }}>
-                {n}
-              </option>
-            ))}
+            {NIVEAUX.map((n) => {
+              const categorie = getCategorieNiveau(n);
+              return (
+                <option key={n} value={n} style={{ background: "#141414", color: "#fff" }}>
+                  {formatNiveau(n)} - {categorie}
+                </option>
+              );
+            })}
           </select>
+          <p style={{ fontSize: 12, opacity: 0.6, color: "#fff", margin: 0 }}>
+            Classement : {getCategorieNiveau(niveau)} ({formatNiveau(niveau)}/8)
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Main dominante</label>
+          <select
+            value={mainDominante}
+            onChange={(e) => setMainDominante(e.target.value as MainDominante | "")}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: 12,
+              borderRadius: 10,
+              border: "1px solid #2a2a2a",
+              background: "#141414",
+              color: "#fff",
+              fontSize: 14,
+            }}
+          >
+            <option value="" style={{ background: "#141414", color: "#fff" }}>Non spécifié</option>
+            <option value="droitier" style={{ background: "#141414", color: "#fff" }}>Droitier</option>
+            <option value="gaucher" style={{ background: "#141414", color: "#fff" }}>Gaucher</option>
+          </select>
+        </div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Position sur le terrain</label>
+          <select
+            value={positionTerrain}
+            onChange={(e) => setPositionTerrain(e.target.value as PositionTerrain | "")}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: 12,
+              borderRadius: 10,
+              border: "1px solid #2a2a2a",
+              background: "#141414",
+              color: "#fff",
+              fontSize: 14,
+            }}
+          >
+            <option value="" style={{ background: "#141414", color: "#fff" }}>Non spécifié</option>
+            <option value="droite" style={{ background: "#141414", color: "#fff" }}>Joueur à droite</option>
+            <option value="gauche" style={{ background: "#141414", color: "#fff" }}>Joueur à gauche</option>
+          </select>
+          <p style={{ fontSize: 12, opacity: 0.6, color: "#fff", margin: 0 }}>
+            Facultatif - Indique ta position préférée en double
+          </p>
         </div>
 
         <div style={{ display: "grid", gap: 8 }}>
@@ -416,7 +478,9 @@ export default function ProfilPage() {
             </div>
             <div style={{ opacity: 0.9, color: "#fff", display: "grid", gap: 4, fontSize: 14 }}>
               <div style={{ fontWeight: 600 }}>👤 {saved.pseudo}</div>
-              <div>🎚️ {saved.niveau}</div>
+              <div>🎚️ {getCategorieNiveau(saved.niveau)} ({formatNiveau(saved.niveau)}/8)</div>
+              {saved.mainDominante && <div>✋ Main : {saved.mainDominante === "droitier" ? "Droitier" : "Gaucher"}</div>}
+              {saved.positionTerrain && <div>📍 Position : {saved.positionTerrain === "droite" ? "Droite" : "Gauche"}</div>}
             </div>
           </div>
           <div style={{ opacity: 0.9, color: "#fff", display: "grid", gap: 8, fontSize: 14 }}>

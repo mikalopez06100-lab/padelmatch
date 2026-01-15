@@ -5,7 +5,9 @@ export type ParticipantRole = "organisateur" | "joueur";
 
 export type PartieFormat = "Amical" | "Compétitif" | "Mixte";
 
-export type Niveau = "Débutant" | "Intermédiaire" | "Confirmé" | "Compétitif";
+export type Niveau = number; // 1.0 à 8.0 par tranche de 0.5 (ex: 1.0, 1.5, 2.0, 2.5, ... 8.0)
+export type MainDominante = "droitier" | "gaucher";
+export type PositionTerrain = "droite" | "gauche";
 
 export type Zone =
   | "Nice"
@@ -71,24 +73,28 @@ export interface ProfilComplet {
   pseudo: string;
   email: string;
   passwordHash: string; // Hash du mot de passe (ne jamais stocker en clair)
-  niveau: Niveau;
+  niveau: Niveau; // 1.0 à 8.0 par tranche de 0.5
   friendlyScore: number; // 0-100
   xp: number; // points
   photoUrl?: string; // base64 image URL
   telephone?: string; // Numéro de téléphone
   preferenceCommunication?: PreferenceCommunication; // Préférence de communication
+  mainDominante?: MainDominante; // Droitier ou gaucher
+  positionTerrain?: PositionTerrain; // Joueur à droite ou à gauche
 }
 
 // Profil utilisateur (sans passwordHash - pour localStorage local)
 export interface Profil {
   pseudo: string;
   email: string;
-  niveau: Niveau;
+  niveau: Niveau; // 1.0 à 8.0 par tranche de 0.5
   friendlyScore: number; // 0-100
   xp: number; // points
   photoUrl?: string; // base64 image URL
   telephone?: string; // Numéro de téléphone
   preferenceCommunication?: PreferenceCommunication; // Préférence de communication
+  mainDominante?: MainDominante; // Droitier ou gaucher
+  positionTerrain?: PositionTerrain; // Joueur à droite ou à gauche
   // TODO: Migration backend - ajouter userId: string, updatedAt: number
 }
 
@@ -149,12 +155,14 @@ export interface ProfilDocument {
   pseudo: string;
   email: string;
   passwordHash: string;
-  niveau: Niveau;
+  niveau: Niveau; // 1.0 à 8.0 par tranche de 0.5
   friendlyScore: number;
   xp: number;
   photoUrl?: string; // URL de l'image (Firebase Storage ou base64 en MVP)
   telephone?: string; // Numéro de téléphone
   preferenceCommunication?: PreferenceCommunication; // Préférence de communication
+  mainDominante?: MainDominante; // Droitier ou gaucher
+  positionTerrain?: PositionTerrain; // Joueur à droite ou à gauche
   createdAt: number;
   updatedAt: number;
 }
