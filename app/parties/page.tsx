@@ -419,9 +419,9 @@ export default function PartiesPage() {
 
   const monPseudo = getMonPseudo();
 
-  // Filtrer les parties selon la visibilité
+  // Filtrer et trier les parties selon la visibilité
   const partiesVisibles = useMemo(() => {
-    return parties.filter((p) => {
+    const filtered = parties.filter((p) => {
       const isOrganisateur = p.organisateurPseudo === monPseudo;
       const isParticipant = p.participants.some((x) => x.pseudo === monPseudo);
 
@@ -434,6 +434,13 @@ export default function PartiesPage() {
       if (p.visibilite === "profil" && p.cibleProfilPseudo === monPseudo) return true;
 
       return false;
+    });
+
+    // Trier par date : le match le plus proche en premier
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.dateISO).getTime();
+      const dateB = new Date(b.dateISO).getTime();
+      return dateA - dateB; // Tri croissant (plus proche en premier)
     });
   }, [parties, monPseudo]);
 

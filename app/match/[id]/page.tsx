@@ -99,6 +99,17 @@ function saveMessage(partieId: string, message: Message) {
   }
 }
 
+function saveAllMessages(partieId: string, messages: Message[]) {
+  try {
+    const raw = localStorage.getItem(MESSAGES_KEY);
+    const allMessages: Record<string, Message[]> = raw ? JSON.parse(raw) : {};
+    allMessages[partieId] = messages;
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(allMessages));
+  } catch {
+    // Ignore errors
+  }
+}
+
 function getInitials(pseudo: string): string {
   return pseudo
     .split(" ")
@@ -161,6 +172,8 @@ export default function MatchPage() {
         const messagesFirestore = await getMessagesFirestore(matchId);
         if (messagesFirestore.length > 0) {
           setMessages(messagesFirestore);
+          // Sauvegarder dans localStorage comme backup
+          saveAllMessages(matchId, messagesFirestore);
           return;
         }
       } catch (error) {
@@ -291,6 +304,8 @@ export default function MatchPage() {
 
     const unsubscribe = subscribeToMessages(matchId, (messagesFirestore) => {
       setMessages(messagesFirestore);
+      // Sauvegarder dans localStorage comme backup pour la persistance
+      saveAllMessages(matchId, messagesFirestore);
     });
 
     return () => {
