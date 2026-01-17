@@ -419,27 +419,40 @@ export default function MatchPage() {
   async function acceptRequest(pseudo: string) {
     if (!partie) return;
 
+    // Vérifier que le match n'est pas complet
+    if (partie.participants.length >= partie.placesTotal) {
+      alert("Le match est déjà complet !");
+      return;
+    }
+
+    // Vérifier que la demande existe
+    const demandeExiste = partie.demandes.some((d) => d.pseudo === pseudo);
+    if (!demandeExiste) {
+      alert("Cette demande n'existe pas.");
+      return;
+    }
+
     const monPseudo = getMonPseudo();
-    const parties = load<Partie[]>(PARTIES_KEY, []);
-    const updated = parties.map((p) => {
-      if (p.id !== matchId) return p;
-      if (p.participants.length >= p.placesTotal) return p;
-
-      const demandes = p.demandes.filter((d) => d.pseudo !== pseudo);
-      const participants = [...p.participants, { pseudo, role: "joueur" as const }];
-
-      return { ...p, demandes, participants };
-    });
+    
+    // Créer la partie mise à jour directement depuis l'état actuel
+    const partieModifiee: Partie = {
+      ...partie,
+      demandes: partie.demandes.filter((d) => d.pseudo !== pseudo),
+      participants: [...partie.participants, { pseudo, role: "joueur" as const }],
+    };
+    
+    // Mettre à jour l'état local immédiatement pour un feedback instantané
+    setPartie(partieModifiee);
+    partiePrecedenteRef.current = partieModifiee;
     
     // Notifier le joueur que sa demande a été acceptée
-    const partieModifiee = updated.find((p) => p.id === matchId);
-    if (partieModifiee && pseudo === monPseudo) {
+    if (pseudo === monPseudo) {
       // Le joueur accepté reçoit une notification
       showNotification("✅ Participation acceptée !", {
         body: `Vous avez été accepté dans ${partie.groupeNom}`,
         tag: `accepte-${matchId}-${pseudo}`,
       });
-    } else if (partieModifiee) {
+    } else {
       // L'organisateur reçoit une confirmation
       showNotification("✅ Joueur accepté", {
         body: `${pseudo} a rejoint ${partie.groupeNom}`,
@@ -447,19 +460,31 @@ export default function MatchPage() {
       });
     }
     
-    persistParties(updated);
-
-    // Sauvegarder dans Firestore pour que subscribeToParties détecte le changement
-    if (partieModifiee) {
-      try {
-        await updatePartieFirestore(matchId, {
-          demandes: partieModifiee.demandes,
-          participants: partieModifiee.participants,
-        });
-      } catch (error) {
-        console.error("Erreur lors de la sauvegarde dans Firestore:", error);
-      }
+    // Sauvegarder dans Firestore pour synchroniser avec les autres utilisateurs
+    try {
+      await updatePartieFirestore(matchId, {
+        demandes: partieModifiee.demandes,
+        participants: partieModifiee.participants,
+      });
+      console.log("✅ Participant accepté dans Firestore");
+    } catch (error: any) {
+      console.error("❌ Erreur lors de la sauvegarde dans Firestore:", error);
+      // En cas d'erreur, on revient à l'état précédent
+      setPartie(partie);
+      partiePrecedenteRef.current = partie;
+      alert("Erreur lors de la sauvegarde. Veuillez réessayer.");
+      return;
     }
+
+    // Mettre à jour localStorage comme backup
+    const parties = load<Partie[]>(PARTIES_KEY, []);
+    const updatedParties = parties.map((p) => {
+      if (p.id === matchId) {
+        return partieModifiee;
+      }
+      return p;
+    });
+    persistParties(updatedParties);
   }
 
   function requestJoin() {
