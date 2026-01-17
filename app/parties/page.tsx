@@ -156,6 +156,7 @@ export default function PartiesPage() {
   const [nouveauTerrainNom, setNouveauTerrainNom] = useState("");
   const [nouveauTerrainVille, setNouveauTerrainVille] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [formExpanded, setFormExpanded] = useState(false);
 
   useEffect(() => {
     async function loadGroupesFromFirestore() {
@@ -841,15 +842,47 @@ export default function PartiesPage() {
       <div
         style={{
           marginTop: 16,
-          padding: 16,
           border: "1px solid #2a2a2a",
           borderRadius: 12,
-          display: "grid",
-          gap: 12,
           background: "#1f1f1f",
           maxWidth: "100%",
         }}
       >
+        {/* En-tête cliquable */}
+        <button
+          onClick={() => setFormExpanded(!formExpanded)}
+          style={{
+            width: "100%",
+            padding: 16,
+            border: "none",
+            background: "transparent",
+            color: "#fff",
+            cursor: "pointer",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: 16,
+            fontWeight: 600,
+            textAlign: "left",
+            borderRadius: 12,
+          }}
+        >
+          <span>➕ Créer une partie</span>
+          <span style={{ fontSize: 20, transition: "transform 0.2s", transform: formExpanded ? "rotate(45deg)" : "rotate(0deg)" }}>
+            {formExpanded ? "−" : "+"}
+          </span>
+        </button>
+
+        {/* Contenu du formulaire (affiché seulement si expandé) */}
+        {formExpanded && (
+          <div
+            style={{
+              padding: "0 16px 16px 16px",
+              display: "grid",
+              gap: 12,
+              maxWidth: "100%",
+            }}
+          >
         <div style={{ display: "grid", gap: 8, maxWidth: "100%" }}>
           <label style={{ fontSize: 13, opacity: 0.7, color: "#fff" }}>Groupe</label>
           <select
@@ -1195,6 +1228,8 @@ export default function PartiesPage() {
         >
           + Créer la partie
         </button>
+          </div>
+        )}
       </div>
 
       {/* List */}
