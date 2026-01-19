@@ -421,7 +421,13 @@ export default function PartiesPage() {
 
   // Filtrer et trier les parties selon la visibilité
   const partiesVisibles = useMemo(() => {
+    const maintenant = new Date().getTime();
+    
     const filtered = parties.filter((p) => {
+      // Exclure les parties dont la date est passée
+      const datePartie = new Date(p.dateISO).getTime();
+      if (datePartie < maintenant) return false;
+
       const isOrganisateur = p.organisateurPseudo === monPseudo;
       const isParticipant = p.participants.some((x) => x.pseudo === monPseudo);
 
