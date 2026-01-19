@@ -22,6 +22,7 @@ export default function Home() {
   const [niveau, setNiveau] = useState<Niveau>(2.5);
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     // Si un profil existe déjà, rediriger vers les parties
@@ -288,25 +289,64 @@ export default function Home() {
                     </button>
                   )}
                 </div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: 14,
-                    borderRadius: 10,
-                    border: "1px solid #2a2a2a",
-                    background: "#141414",
-                    color: "#fff",
-                    fontSize: 15,
-                    outline: "none",
-                  }}
-                />
+                <div style={{ position: "relative", width: "100%" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: 14,
+                      paddingRight: 48,
+                      borderRadius: 10,
+                      border: "1px solid #2a2a2a",
+                      background: "#141414",
+                      color: "#fff",
+                      fontSize: 15,
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute",
+                      right: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 4,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#666",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#10b981";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "#666";
+                    }}
+                  >
+                    {showPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
