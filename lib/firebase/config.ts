@@ -1,6 +1,6 @@
 // Configuration Firebase
 
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -15,8 +15,8 @@ const firebaseConfig = {
   appId: "1:248975894384:web:b2d004851f1b4a9c5911b5",
 };
 
-// Initialiser Firebase
-const app = initializeApp(firebaseConfig);
+// Initialiser Firebase (éviter la double initialisation)
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Exporter les services
 export const auth = getAuth(app);

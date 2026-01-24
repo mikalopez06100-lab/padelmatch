@@ -15,6 +15,11 @@ export const STORAGE_KEYS = {
 
 // Fonctions génériques de stockage local
 export function loadFromStorage<T>(key: string, fallback: T): T {
+  // Vérifier si nous sommes côté client
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+  
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
@@ -25,6 +30,11 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export function saveToStorage<T>(key: string, value: T): void {
+  // Vérifier si nous sommes côté client
+  if (typeof window === "undefined") {
+    return;
+  }
+  
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
@@ -33,6 +43,11 @@ export function saveToStorage<T>(key: string, value: T): void {
 }
 
 export function removeFromStorage(key: string): void {
+  // Vérifier si nous sommes côté client
+  if (typeof window === "undefined") {
+    return;
+  }
+  
   try {
     localStorage.removeItem(key);
   } catch (error) {
