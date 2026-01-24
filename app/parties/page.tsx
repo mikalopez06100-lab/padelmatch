@@ -116,16 +116,25 @@ function getCandidats(blocks: string[], profilsGlobaux: ProfilGlobal[]): ProfilG
   return candidats.slice(0, 4);
 }
 
-function shareWhatsApp(p: Partie) {
+function shareWhatsApp(p: Partie, terrains: Terrain[]) {
   const inscrits = p.participants.length;
   const manque = Math.max(0, p.placesTotal - inscrits);
 
+  // Trouver le terrain correspondant
+  const terrain = terrains.find(t => t.id === p.terrainId);
+  const terrainInfo = terrain 
+    ? `🏟️ ${terrain.nom} - ${terrain.ville}\n` 
+    : `📍 ${p.zone}\n`;
+
+  const appUrl = `https://padelmatch-sage.vercel.app/match/${p.id}`;
+
   const texte =
-    `🎾 Partie Pádel (${p.format})\n` +
-    `📍 ${p.zone}\n` +
-    `🕒 ${p.dateISO.replace("T", " ")}\n` +
-    `👥 ${inscrits}/${p.placesTotal} inscrits — il manque ${manque}\n` +
-    `👉 Rejoins-nous sur PadelMatch !`;
+    `🎾 Partie Pádel (${p.format})\n\n` +
+    terrainInfo +
+    `🕒 ${p.dateISO.replace("T", " à ")}\n` +
+    `👥 ${inscrits}/${p.placesTotal} inscrits — il manque ${manque}\n\n` +
+    `👉 Rejoins-nous sur PadelMatch !\n` +
+    `🔗 ${appUrl}`;
 
   const url = `https://wa.me/?text=${encodeURIComponent(texte)}`;
   window.open(url, "_blank");
@@ -1621,7 +1630,7 @@ export default function PartiesPage() {
                     </div>
 
                     <button
-                      onClick={() => shareWhatsApp(p)}
+                      onClick={() => shareWhatsApp(p, terrains)}
                       style={{
                         padding: "12px 16px",
                         borderRadius: 8,
