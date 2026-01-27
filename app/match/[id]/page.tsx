@@ -44,69 +44,21 @@ type Message = {
   createdAt: number;
 };
 
-const PARTIES_KEY = "padelmatch_parties_v1";
-const PROFIL_KEY = "padelmatch_profil_v1";
-const MESSAGES_KEY = "padelmatch_messages_v1";
-
-function load<T>(key: string, fallback: T): T {
+// Fonction pour obtenir le pseudo de l'utilisateur connecté depuis Firebase
+async function getMonPseudo(): Promise<string> {
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function save<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function getMonPseudo(): string {
-  try {
-    const raw = localStorage.getItem(PROFIL_KEY);
-    if (!raw) return "Joueur";
-    const parsed = JSON.parse(raw);
-    const pseudo = String(parsed?.pseudo ?? "").trim();
-    return pseudo.length >= 2 ? pseudo : "Joueur";
+    const { getCurrentUser } = await import("@/lib/firebase/auth");
+    const user = getCurrentUser();
+    if (!user) return "Joueur";
+    
+    const { getProfil } = await import("@/lib/firebase/firestore");
+    const profil = await getProfil(user.uid);
+    if (profil?.pseudo) {
+      return profil.pseudo;
+    }
+    return "Joueur";
   } catch {
     return "Joueur";
-  }
-}
-
-function loadMessages(partieId: string): Message[] {
-  try {
-    const raw = localStorage.getItem(MESSAGES_KEY);
-    if (!raw) return [];
-    const allMessages = JSON.parse(raw) as Record<string, Message[]>;
-    return allMessages[partieId] ?? [];
-  } catch {
-    return [];
-  }
-}
-
-function saveMessage(partieId: string, message: Message) {
-  try {
-    const raw = localStorage.getItem(MESSAGES_KEY);
-    const allMessages: Record<string, Message[]> = raw ? JSON.parse(raw) : {};
-    if (!allMessages[partieId]) {
-      allMessages[partieId] = [];
-    }
-    allMessages[partieId] = [...allMessages[partieId], message];
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(allMessages));
-  } catch {
-    // Ignore errors
-  }
-}
-
-function saveAllMessages(partieId: string, messages: Message[]) {
-  try {
-    const raw = localStorage.getItem(MESSAGES_KEY);
-    const allMessages: Record<string, Message[]> = raw ? JSON.parse(raw) : {};
-    allMessages[partieId] = messages;
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(allMessages));
-  } catch {
-    // Ignore errors
   }
 }
 
@@ -147,44 +99,54 @@ export default function MatchPage() {
   const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
   const [terrains, setTerrains] = useState<Terrain[]>([]);
   const [groupes, setGroupes] = useState<Groupe[]>([]);
+  const [monPseudo, setMonPseudo] = useState<string>("Joueur");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const partiePrecedenteRef = useRef<Partie | null>(null);
 
+  // Charger le pseudo de l'utilisateur
   useEffect(() => {
-    const parties = load<Partie[]>(PARTIES_KEY, []);
-    const found = parties.find((p) => p.id === matchId);
-
-    if (!found) {
-      return;
+    async function loadMonPseudo() {
+      const pseudo = await getMonPseudo();
+      setMonPseudo(pseudo);
     }
+    loadMonPseudo();
+  }, []);
 
-    setPartie(found);
-    partiePrecedenteRef.current = found;
+  useEffect(() => {
+    // Charger la partie depuis Firestore
+    async function loadPartieFromFirestore() {
+      try {
+        const { getPartie } = await import("@/lib/firebase/firestore");
+        const found = await getPartie(matchId);
+        if (found) {
+          setPartie(found);
+          partiePrecedenteRef.current = found;
+          const participant = found.participants.find((p) => p.pseudo === monPseudo);
+          setIsParticipant(!!participant);
+          setIsOrganisateur(participant?.role === "organisateur");
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement de la partie depuis Firestore:", error);
+      }
+    }
+    loadPartieFromFirestore();
 
-    const monPseudo = getMonPseudo();
-    const participant = found.participants.find((p) => p.pseudo === monPseudo);
-    setIsParticipant(!!participant);
-    setIsOrganisateur(participant?.role === "organisateur");
-
-    // Charger les messages depuis Firestore en priorité
+    // Charger les messages depuis Firestore
     async function loadMessagesFromFirestore() {
       try {
         const messagesFirestore = await getMessagesFirestore(matchId);
         if (messagesFirestore.length > 0) {
           setMessages(messagesFirestore);
-          // Sauvegarder dans localStorage comme backup
-          saveAllMessages(matchId, messagesFirestore);
           return;
         }
       } catch (error) {
         console.error("Erreur lors du chargement des messages depuis Firestore:", error);
       }
-      // Fallback : charger depuis localStorage
-      const loadedMessages = loadMessages(matchId);
-      setMessages(loadedMessages);
+      // Pas de fallback localStorage - utiliser uniquement Firestore
+      setMessages([]);
     }
     loadMessagesFromFirestore();
-  }, [matchId]);
+  }, [matchId, monPseudo]);
 
   // Charger les profils globaux pour afficher les photos
   useEffect(() => {
@@ -217,7 +179,6 @@ export default function MatchPage() {
 
   // S'abonner aux changements Firestore pour détecter les nouvelles participations
   useEffect(() => {
-    const monPseudo = getMonPseudo();
     
     const unsubscribe = subscribeToParties((partiesFirestore) => {
       const partieFirestore = partiesFirestore.find((p: any) => p.id === matchId);
@@ -304,8 +265,6 @@ export default function MatchPage() {
 
     const unsubscribe = subscribeToMessages(matchId, (messagesFirestore) => {
       setMessages(messagesFirestore);
-      // Sauvegarder dans localStorage comme backup pour la persistance
-      saveAllMessages(matchId, messagesFirestore);
     });
 
     return () => {
@@ -317,27 +276,24 @@ export default function MatchPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  function persistParties(updatedParties: Partie[]) {
-    save(PARTIES_KEY, updatedParties);
-    const found = updatedParties.find((p) => p.id === matchId);
-    if (found) {
-      setPartie(found);
-    }
-  }
-
-  function annulerPartie() {
+  async function annulerPartie() {
     if (!partie || !isOrganisateur) return;
     if (!confirm("Es-tu sûr de vouloir annuler cette partie ? Cette action est irréversible.")) {
       return;
     }
 
-    const parties = load<Partie[]>(PARTIES_KEY, []);
-    const updated = parties.filter((p) => p.id !== matchId);
-    persistParties(updated);
-    router.push("/parties");
+    // Supprimer uniquement dans Firestore
+    try {
+      const { deletePartie } = await import("@/lib/firebase/firestore");
+      await deletePartie(matchId);
+      router.push("/parties");
+    } catch (error) {
+      console.error("Erreur lors de la suppression dans Firestore:", error);
+      alert("Erreur lors de la suppression. Veuillez réessayer.");
+    }
   }
 
-  function quitterPartie() {
+  async function quitterPartie() {
     if (!partie || isOrganisateur) {
       alert("L'organisateur ne peut pas quitter la partie. Annule-la si nécessaire.");
       return;
@@ -347,23 +303,21 @@ export default function MatchPage() {
       return;
     }
 
-    const monPseudo = getMonPseudo();
-    const parties = load<Partie[]>(PARTIES_KEY, []);
-    const updated = parties.map((p) => {
-      if (p.id !== matchId) return p;
-      return {
-        ...p,
-        participants: p.participants.filter((x) => x.pseudo !== monPseudo),
-      };
-    });
-    persistParties(updated);
-    router.push("/parties");
+    // Mettre à jour uniquement dans Firestore
+    try {
+      const { updatePartie } = await import("@/lib/firebase/firestore");
+      await updatePartie(matchId, {
+        participants: partie.participants.filter((x) => x.pseudo !== monPseudo),
+      });
+      router.push("/parties");
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour dans Firestore:", error);
+      alert("Erreur lors de la mise à jour. Veuillez réessayer.");
+    }
   }
 
   async function envoyerMessage() {
     if (!messageText.trim() || !partie) return;
-
-    const monPseudo = getMonPseudo();
     const contenuMessage = messageText.trim();
     
     // Réinitialiser le champ immédiatement pour une meilleure UX
@@ -404,7 +358,7 @@ export default function MatchPage() {
         contenu: contenuMessage,
         createdAt: Date.now(),
       };
-      saveMessage(matchId, fallbackMessage);
+      // Pas de fallback localStorage - utiliser uniquement Firestore
       
       // Retirer le message temporaire et ajouter le message de fallback
       setMessages((prev) => {
@@ -432,8 +386,6 @@ export default function MatchPage() {
       return;
     }
 
-    const monPseudo = getMonPseudo();
-    
     // Créer la partie mise à jour directement depuis l'état actuel
     const partieModifiee: Partie = {
       ...partie,
@@ -476,21 +428,15 @@ export default function MatchPage() {
       return;
     }
 
-    // Mettre à jour localStorage comme backup
-    const parties = load<Partie[]>(PARTIES_KEY, []);
-    const updatedParties = parties.map((p) => {
-      if (p.id === matchId) {
-        return partieModifiee;
-      }
-      return p;
-    });
-    persistParties(updatedParties);
+    // Mettre à jour uniquement dans Firestore
+    if (partieModifiee) {
+      setPartie(partieModifiee);
+      partiePrecedenteRef.current = partieModifiee;
+    }
   }
 
-  function requestJoin() {
+  async function requestJoin() {
     if (!partie) return;
-
-    const monPseudo = getMonPseudo();
     
     // Vérifier si l'utilisateur peut rejoindre :
     // 1. Si la partie est ouverte à la communauté
@@ -505,29 +451,41 @@ export default function MatchPage() {
       return;
     }
 
-    const parties = load<Partie[]>(PARTIES_KEY, []);
-    const partieAvant = parties.find((p) => p.id === matchId);
-    const avaitDejaDemande = partieAvant?.demandes.some((d) => d.pseudo === monPseudo);
+    // Vérifier si une demande existe déjà
+    const avaitDejaDemande = partie.demandes.some((d) => d.pseudo === monPseudo);
     
-    const updated = parties.map((p) => {
-      if (p.id !== matchId) return p;
-      if (p.participants.length >= p.placesTotal) return p;
-      if (p.participants.some((x) => x.pseudo === monPseudo)) return p;
-      if (p.demandes.some((d) => d.pseudo === monPseudo)) return p;
-
-      return { ...p, demandes: [...p.demandes, { pseudo: monPseudo, createdAt: Date.now() }] };
-    });
-    
-    // Vérifier si la demande a été ajoutée et afficher une confirmation
-    const partieModifiee = updated.find((p) => p.id === matchId);
-    const demandeAjoutee = partieModifiee && partieModifiee.demandes.some((d) => d.pseudo === monPseudo);
-    
-    if (demandeAjoutee && !avaitDejaDemande && partieModifiee) {
-      alert("✅ Demande envoyée ! L'organisateur va valider votre participation.");
-      // La notification à l'organisateur sera gérée par subscribeToParties dans parties/page.tsx
+    // Vérifier les conditions
+    if (partie.participants.length >= partie.placesTotal) {
+      alert("Cette partie est complète.");
+      return;
     }
-    
-    persistParties(updated);
+    if (partie.participants.some((x) => x.pseudo === monPseudo)) {
+      alert("Vous êtes déjà participant à cette partie.");
+      return;
+    }
+    if (avaitDejaDemande) {
+      alert("Vous avez déjà envoyé une demande pour cette partie.");
+      return;
+    }
+
+    // Ajouter la demande dans Firestore
+    try {
+      const { updatePartie } = await import("@/lib/firebase/firestore");
+      await updatePartie(matchId, {
+        demandes: [...partie.demandes, { pseudo: monPseudo, createdAt: Date.now() }],
+      });
+      
+      // Mettre à jour l'état local
+      setPartie({
+        ...partie,
+        demandes: [...partie.demandes, { pseudo: monPseudo, createdAt: Date.now() }],
+      });
+      
+      alert("✅ Demande envoyée ! L'organisateur va valider votre participation.");
+    } catch (error) {
+      console.error("Erreur lors de l'envoi de la demande:", error);
+      alert("Erreur lors de l'envoi de la demande. Veuillez réessayer.");
+    }
   }
 
   if (!partie) {
@@ -552,7 +510,6 @@ export default function MatchPage() {
     );
   }
 
-  const monPseudo = getMonPseudo();
   const participant = partie.participants.find((p) => p.pseudo === monPseudo);
   const inscrits = partie.participants.length;
   const manque = Math.max(0, partie.placesTotal - inscrits);
@@ -765,7 +722,6 @@ export default function MatchPage() {
 
       {/* Barre d'action */}
       {!complete && !hasDemande && !isParticipant && (() => {
-        const monPseudo = getMonPseudo();
         const peutRejoindre = partie.ouverteCommunaute || (() => {
           const groupe = getGroupeById(partie.groupeId);
           return groupe?.membres?.includes(monPseudo) ?? false;

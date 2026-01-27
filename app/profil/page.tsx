@@ -8,50 +8,16 @@ import { getProfil } from "@/lib/firebase/firestore";
 import { getAllNiveaux, getCategorieNiveau, formatNiveau, convertOldNiveauToNew } from "@/lib/utils/niveau";
 import { loadTerrains } from "@/lib/data/terrains";
 
-const PROFIL_KEY = "padelmatch_profil_v1";
-const BLOCKS_KEY = "padelmatch_blocks_v1";
-
 const NIVEAUX = getAllNiveaux();
 
-function loadProfil(): ProfilType | null {
-  try {
-    const raw = localStorage.getItem(PROFIL_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.pseudo) return null;
-    return parsed as ProfilType;
-  } catch {
-    return null;
-  }
-}
-
-async function saveProfil(p: ProfilType) {
-  localStorage.setItem(PROFIL_KEY, JSON.stringify(p));
-  // Mettre à jour dans Firestore et la liste globale des profils (avec gestion du passwordHash)
-  try {
-    await updateProfil(p);
-    console.log("✅ Profil sauvegardé dans Firestore");
-  } catch (error) {
-    console.error("❌ Erreur lors de la sauvegarde dans Firestore:", error);
-    // On continue quand même car localStorage est déjà sauvegardé
-  }
-}
-
+// Les blocks seront gérés via Firestore dans le profil utilisateur
+// Pour l'instant, on retourne un tableau vide
 function loadBlocks(): string[] {
-  try {
-    const raw = localStorage.getItem(BLOCKS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map((p) => String(p)) : [];
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 function removeBlock(pseudo: string) {
-  const blocks = loadBlocks();
-  const updated = blocks.filter((p) => p !== pseudo);
-  localStorage.setItem(BLOCKS_KEY, JSON.stringify(updated));
+  // TODO: Implémenter la suppression de block dans Firestore
 }
 
 function getInitials(pseudo: string): string {
@@ -124,24 +90,8 @@ export default function ProfilPage() {
           }
         }
       } catch (error) {
-        console.warn("⚠️ Impossible de charger depuis Firestore, utilisation du localStorage:", error);
-      }
-
-      // Fallback : charger depuis localStorage
-      const existing = loadProfil();
-      if (existing) {
-        setPseudo(existing.pseudo);
-        const existingNiveau = typeof existing.niveau === "string" 
-          ? convertOldNiveauToNew(existing.niveau as any)
-          : existing.niveau || 2.5;
-        setNiveau(existingNiveau);
-        setPhotoUrl(existing.photoUrl);
-        setTelephone(existing.telephone || "");
-        setPreferenceCommunication(existing.preferenceCommunication || "notification");
-        setMainDominante(existing.mainDominante || "");
-        setPositionTerrain(existing.positionTerrain || "");
-        setTerrainFavoriId(existing.terrainFavoriId || "");
-        setSaved(existing);
+        console.error("❌ Erreur lors du chargement du profil depuis Firestore:", error);
+        // Pas de fallback localStorage - utiliser uniquement Firestore
       }
       setBlocks(loadBlocks());
     }
@@ -201,7 +151,7 @@ export default function ProfilPage() {
     };
 
     try {
-      await saveProfil(profil);
+      await updateProfil(profil);
       setSaved(profil);
       
       // Recharger depuis Firestore pour s'assurer que tout est synchronisé
@@ -236,7 +186,6 @@ export default function ProfilPage() {
   }
 
   function onReset() {
-    localStorage.removeItem(PROFIL_KEY);
     setPseudo("");
     setNiveau(2.5);
     setPhotoUrl(undefined);

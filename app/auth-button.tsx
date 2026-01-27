@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { logout as firebaseLogout } from "@/lib/firebase/auth";
-import { STORAGE_KEYS, removeFromStorage } from "@/lib/data/storage";
-
-const PROFIL_KEY = "padelmatch_profil_v1";
+import { logout as firebaseLogout, getCurrentUser, onAuthChange } from "@/lib/firebase/auth";
 
 export function AuthButton() {
   const router = useRouter();
@@ -13,26 +10,21 @@ export function AuthButton() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    // Vérifier si un profil est connecté
+    // Vérifier l'état d'authentification Firebase
     const checkAuth = () => {
-      try {
-        const raw = localStorage.getItem(PROFIL_KEY);
-        if (!raw) {
-          setIsLoggedIn(false);
-          return;
-        }
-        const parsed = JSON.parse(raw);
-        setIsLoggedIn(!!parsed?.pseudo);
-      } catch {
-        setIsLoggedIn(false);
-      }
+      const user = getCurrentUser();
+      setIsLoggedIn(!!user);
     };
 
+    // Vérifier immédiatement
     checkAuth();
 
-    // Re-vérifier périodiquement
-    const interval = setInterval(checkAuth, 1000);
-    return () => clearInterval(interval);
+    // Écouter les changements d'authentification
+    const unsubscribe = onAuthChange((user) => {
+      setIsLoggedIn(!!user);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   async function handleLogout() {
@@ -44,15 +36,10 @@ export function AuthButton() {
       // Déconnecter Firebase Auth
       await firebaseLogout();
       console.log("✅ Déconnexion Firebase réussie");
+      setIsLoggedIn(false);
     } catch (error: any) {
       console.error("❌ Erreur lors de la déconnexion Firebase:", error);
-      // Continuer quand même pour nettoyer le localStorage
     }
-
-    // Nettoyer le localStorage
-    removeFromStorage(STORAGE_KEYS.profil);
-    localStorage.removeItem(PROFIL_KEY);
-    setIsLoggedIn(false);
     
     // Rediriger vers la page d'accueil
     router.push("/");

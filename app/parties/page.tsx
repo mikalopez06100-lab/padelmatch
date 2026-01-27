@@ -52,57 +52,49 @@ type Partie = {
   createdAt: number;
 };
 
-const GROUPES_KEY = "padelmatch_groupes_v1";
-const PARTIES_KEY = "padelmatch_parties_v1";
-const PROFIL_KEY = "padelmatch_profil_v1";
-const BLOCKS_KEY = "padelmatch_blocks_v1";
-
-function load<T>(key: string, fallback: T): T {
+// Fonction pour obtenir le pseudo de l'utilisateur connecté depuis Firebase
+async function getMonPseudo(): Promise<string> {
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function save<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function getMonPseudo(): string {
-  try {
-    const raw = localStorage.getItem(PROFIL_KEY);
-    if (!raw) return "Joueur";
-    const parsed = JSON.parse(raw);
-    const pseudo = String(parsed?.pseudo ?? "").trim();
-    return pseudo.length >= 2 ? pseudo : "Joueur";
+    const user = getCurrentUser();
+    if (!user) return "Joueur";
+    
+    const { getProfil } = await import("@/lib/firebase/firestore");
+    const profil = await getProfil(user.uid);
+    if (profil?.pseudo) {
+      return profil.pseudo;
+    }
+    return "Joueur";
   } catch {
     return "Joueur";
   }
 }
 
-function loadBlocks(): string[] {
+// Fonction synchrone pour obtenir le pseudo (utilisée dans les cas critiques)
+function getMonPseudoSync(): string {
   try {
-    const raw = localStorage.getItem(BLOCKS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map((p) => String(p)) : [];
+    const user = getCurrentUser();
+    if (!user) return "Joueur";
+    // On ne peut pas récupérer le profil de manière synchrone depuis Firestore
+    // On retourne un pseudo par défaut
+    return "Joueur";
   } catch {
-    return [];
+    return "Joueur";
   }
+}
+
+// Les blocks seront gérés via Firestore dans le profil utilisateur
+// Pour l'instant, on retourne un tableau vide
+function loadBlocks(): string[] {
+  return [];
 }
 
 function saveBlocks(blocks: string[]) {
-  localStorage.setItem(BLOCKS_KEY, JSON.stringify(blocks));
+  // Sauvegarde dans Firestore via le profil utilisateur
+  // TODO: Implémenter la sauvegarde des blocks dans Firestore
 }
 
 function addBlock(pseudo: string) {
-  const blocks = loadBlocks();
-  if (!blocks.includes(pseudo)) {
-    saveBlocks([...blocks, pseudo]);
-  }
+  // TODO: Implémenter l'ajout de block dans Firestore
 }
 
 function removeBlock(pseudo: string) {
@@ -147,6 +139,7 @@ export default function PartiesPage() {
   const [mode, setMode] = useState<"organisateur" | "joueur">("joueur");
   const [blocks, setBlocks] = useState<string[]>([]);
   const [profilsGlobaux, setProfilsGlobaux] = useState<ProfilGlobal[]>([]);
+  const [monPseudo, setMonPseudo] = useState<string>("Joueur");
   const partiesPrevRef = useRef<Partie[]>([]);
 
   // Form state
@@ -168,6 +161,13 @@ export default function PartiesPage() {
   const [formExpanded, setFormExpanded] = useState(false);
 
   useEffect(() => {
+    // Charger le pseudo de l'utilisateur connecté
+    async function loadMonPseudo() {
+      const pseudo = await getMonPseudo();
+      setMonPseudo(pseudo);
+    }
+    loadMonPseudo();
+
     async function loadGroupesFromFirestore() {
       try {
         const groupesData = await getGroupes();
@@ -175,10 +175,9 @@ export default function PartiesPage() {
         setGroupeId(groupesData[0]?.id ?? "");
       } catch (error) {
         console.error("Erreur lors du chargement des groupes:", error);
-        // Fallback : charger depuis localStorage
-        const gs = load<Groupe[]>(GROUPES_KEY, []);
-        setGroupes(gs);
-        setGroupeId(gs[0]?.id ?? "");
+        // Pas de fallback localStorage - utiliser uniquement Firestore
+        setGroupes([]);
+        setGroupeId("");
       }
     }
     loadGroupesFromFirestore();
@@ -253,47 +252,10 @@ export default function PartiesPage() {
           alert("⚠️ Erreur de permission Firestore\n\nLes règles Firestore bloquent l'accès.\nVérifiez que les règles sont déployées correctement.");
         } else if (error.code === "failed-precondition") {
           console.warn("Index Firestore manquant - cela devrait être géré automatiquement");
-        } else {
-          console.warn("Fallback vers localStorage...");
         }
         
-        // Fallback : charger depuis localStorage
-        const raw = load<any[]>(PARTIES_KEY, []);
-        const repaired: Partie[] = raw.map((p) => {
-          const orga = String(p.organisateurPseudo ?? "Organisateur");
-          const participants: Participant[] = Array.isArray(p.participants)
-            ? p.participants.map((x: any) => ({
-                pseudo: String(x?.pseudo ?? "Joueur"),
-                role: (x?.role === "organisateur" ? "organisateur" : "joueur") as Participant["role"],
-              }))
-            : [{ pseudo: orga, role: "organisateur" as const }];
-          const demandes: Demande[] = Array.isArray(p.demandes)
-            ? p.demandes.map((d: any) => ({
-                pseudo: String(d?.pseudo ?? "Candidat"),
-                createdAt: Number(d?.createdAt ?? Date.now()),
-              }))
-            : [];
-          return {
-            id: String(p.id ?? crypto.randomUUID()),
-            groupeId: String(p.groupeId ?? ""),
-            groupeNom: String(p.groupeNom ?? "Groupe"),
-            zone: String(p.zone ?? "Nice"),
-            dateISO: String(p.dateISO ?? ""),
-            format: (p.format === "Compétitif" || p.format === "Mixte" ? p.format : "Amical") as any,
-            placesTotal: Number(p.placesTotal ?? 4),
-            terrainId: p.terrainId ? String(p.terrainId) : undefined,
-            organisateurPseudo: orga,
-            participants,
-            visibilite: (p.visibilite === "profil" || p.visibilite === "groupe" || p.visibilite === "communaute"
-              ? p.visibilite
-              : (p.ouverteCommunaute ? "communaute" : "groupe")) as VisibilitePartie,
-            cibleProfilPseudo: p.cibleProfilPseudo ? String(p.cibleProfilPseudo) : undefined,
-            ouverteCommunaute: Boolean(p.ouverteCommunaute ?? false),
-            demandes,
-            createdAt: Number(p.createdAt ?? Date.now()),
-          };
-        });
-        setParties(repaired);
+        // Pas de fallback localStorage - utiliser uniquement Firestore
+        setParties([]);
       }
     }
 
@@ -301,7 +263,6 @@ export default function PartiesPage() {
 
     // S'abonner aux mises à jour en temps réel
     const unsubscribe = subscribeToParties((partiesFirestore) => {
-      const monPseudo = getMonPseudo();
       const partiesPrecedentes = partiesPrevRef.current;
       
       // Détecter les nouvelles demandes pour notifier l'organisateur
@@ -426,8 +387,6 @@ export default function PartiesPage() {
     }
   }
 
-  const monPseudo = getMonPseudo();
-
   // Filtrer et trier les parties selon la visibilité
   const partiesVisibles = useMemo(() => {
     const maintenant = new Date().getTime();
@@ -459,11 +418,7 @@ export default function PartiesPage() {
     });
   }, [parties, monPseudo]);
 
-  function persist(next: Partie[]) {
-    setParties(next);
-    // Sauvegarder dans localStorage pour compatibilité (fallback)
-    save(PARTIES_KEY, next);
-  }
+  // Pas de persist localStorage - utiliser uniquement Firestore
 
   function notifyGroupMembers(partie: Omit<Partie, "id">, groupe: Groupe) {
     // Récupérer les membres du groupe (exclure l'organisateur)
@@ -596,7 +551,7 @@ export default function PartiesPage() {
       const partieId = await createPartieFirestore(newPartie);
       console.log("✅ Partie créée dans Firestore avec l'ID:", partieId);
       // Ajouter localement avec l'ID retourné
-      persist([{ ...newPartie, id: partieId }, ...parties]);
+      setParties([{ ...newPartie, id: partieId }, ...parties]);
       alert("Partie créée avec succès ✅");
     } catch (error: any) {
       console.error("❌ Erreur lors de la création de la partie:", error);
@@ -604,7 +559,7 @@ export default function PartiesPage() {
       console.error("Message:", error.message);
       // Fallback : créer localement
       const partieId = crypto.randomUUID();
-      persist([{ ...newPartie, id: partieId }, ...parties]);
+      setParties([{ ...newPartie, id: partieId }, ...parties]);
       if (error.code === "permission-denied") {
         alert("⚠️ Erreur : Permission refusée par Firestore. La partie est sauvegardée localement uniquement. Vérifiez les règles Firestore.");
       } else {
@@ -665,7 +620,7 @@ export default function PartiesPage() {
           }
         : p
     );
-    persist(updatedParties);
+    setParties(updatedParties);
 
     // Sauvegarder dans Firestore
     await updatePartieInFirestore(id, updated);
@@ -683,7 +638,7 @@ export default function PartiesPage() {
   }
 
   function addPlayerTest(id: string) {
-    persist(
+    setParties(
       parties.map((p) => {
         if (p.id !== id) return p;
         if (p.participants.length >= p.placesTotal) return p;
@@ -695,7 +650,6 @@ export default function PartiesPage() {
   }
 
   async function requestJoin(id: string) {
-    const monPseudo = getMonPseudo();
 
     const updatedParties = parties.map((p) => {
       if (p.id !== id) return p;
@@ -734,7 +688,7 @@ export default function PartiesPage() {
       // La notification à l'organisateur sera gérée par subscribeToParties
     }
     
-    persist(updatedParties);
+    setParties(updatedParties);
 
     // Sauvegarder dans Firestore
     const partie = updatedParties.find((p) => p.id === id);
@@ -755,7 +709,7 @@ export default function PartiesPage() {
       return { ...p, demandes, participants };
     });
     
-    persist(updatedParties);
+    setParties(updatedParties);
 
     // Sauvegarder dans Firestore
     const updatedPartie = updatedParties.find((p) => p.id === matchId);
@@ -769,7 +723,6 @@ export default function PartiesPage() {
     // Notifier le joueur que sa demande a été acceptée
     // (Pour une vraie notification push, il faudrait Firebase Cloud Messaging)
     if (partie) {
-      const monPseudo = getMonPseudo();
       if (pseudo === monPseudo) {
         // Le joueur accepté reçoit une notification
         showNotification("✅ Participation acceptée !", {
@@ -795,7 +748,7 @@ export default function PartiesPage() {
     } catch (error) {
       console.error("Erreur lors de la suppression dans Firestore:", error);
     }
-    persist(parties.filter((p) => p.id !== id));
+    setParties(parties.filter((p) => p.id !== id));
   }
 
   return (
@@ -1417,8 +1370,6 @@ export default function PartiesPage() {
                         return;
                       }
                       if (complete) return;
-
-                      const monPseudo = getMonPseudo();
                       
                       // Vérifier si l'utilisateur peut rejoindre :
                       // 1. Si la partie est ouverte à la communauté

@@ -5,7 +5,6 @@
 import type { Profil, ProfilComplet, Niveau } from "../types";
 import { login as firebaseLogin, createAccount as firebaseCreateAccount, resetPassword as firebaseResetPassword, getCurrentUser, onAuthChange } from "../firebase/auth";
 import { getProfil, updateProfil as updateProfilFirestore } from "../firebase/firestore";
-import { STORAGE_KEYS, loadFromStorage, saveToStorage } from "./storage";
 import { getProfilGlobalByEmail, addOrUpdateProfilGlobal } from "./profils-globaux";
 import { hashPassword, verifyPassword } from "../utils/password";
 import { convertOldNiveauToNew } from "../utils/niveau";
@@ -25,23 +24,13 @@ export async function authenticate(email: string, password: string): Promise<Pro
     // Récupérer le profil depuis Firestore
     const profil = await getProfil(user.uid);
     if (profil) {
-      // Sauvegarder dans localStorage pour compatibilité
-      saveToStorage(STORAGE_KEYS.profil, profil);
       return profil;
     }
 
     return null;
   } catch (error: any) {
     console.error("Erreur d'authentification:", error);
-    // Si erreur Firebase, essayer avec l'ancien système (fallback)
-    const profilGlobal = getProfilGlobalByEmail(email);
-    if (!profilGlobal) {
-      return null;
-    }
-    // Pour compatibilité avec anciens comptes, on garde l'ancien système temporairement
-    const { passwordHash, ...profil } = profilGlobal;
-    saveToStorage(STORAGE_KEYS.profil, profil);
-    return profil;
+    return null;
   }
 }
 
@@ -92,8 +81,6 @@ export async function createProfil(data: {
         email: profil.email,
         niveau: profil.niveau,
       });
-      // Sauvegarder dans localStorage pour compatibilité
-      saveToStorage(STORAGE_KEYS.profil, profil);
       return profil;
     }
 
@@ -104,31 +91,14 @@ export async function createProfil(data: {
     console.error("Code d'erreur:", error.code);
     console.error("Message:", error.message);
     
-    // Ne pas utiliser le fallback localStorage si c'est une erreur Firebase critique
-    // L'utilisateur doit savoir que ça n'a pas fonctionné
     if (error.code === "permission-denied") {
       throw new Error("Permission refusée par Firestore. Vérifiez les règles de sécurité.");
     }
     if (error.code === "auth/email-already-in-use") {
-      throw error; // Propager l'erreur pour que l'UI puisse gérer
+      throw error;
     }
     
-    // Si erreur Firebase autre, essayer avec l'ancien système (fallback)
-    console.warn("⚠️ Utilisation du fallback localStorage");
-    const passwordHash = hashPassword(data.password);
-    const profilComplet: ProfilComplet = {
-      pseudo: data.pseudo,
-      email: data.email,
-      passwordHash,
-      niveau: data.niveau as any,
-      friendlyScore: 50,
-      xp: 0,
-      photoUrl: data.photoUrl,
-    };
-    const { passwordHash: _, ...profilLocal } = profilComplet;
-    saveToStorage(STORAGE_KEYS.profil, profilLocal);
-    addOrUpdateProfilGlobal(profilComplet);
-    return profilLocal;
+    throw error;
   }
 }
 
@@ -159,41 +129,22 @@ export async function loadCurrentProfil(): Promise<Profil | null> {
           }
         }
         
-        // Sauvegarder dans localStorage pour compatibilité
-        saveToStorage(STORAGE_KEYS.profil, profilMigre);
         return profilMigre;
       }
     }
 
-    // Fallback : vérifier localStorage (pour compatibilité avec anciens comptes)
-    const profil = loadFromStorage<Profil | null>(STORAGE_KEYS.profil, null);
-    if (!profil?.pseudo) return null;
-    
-    // Migration du niveau si nécessaire (pour localStorage aussi)
-    if (typeof profil.niveau === "string") {
-      const nouveauNiveau = convertOldNiveauToNew(profil.niveau);
-      const profilMigre = { ...profil, niveau: nouveauNiveau };
-      saveToStorage(STORAGE_KEYS.profil, profilMigre);
-      return profilMigre;
-    }
-    
-    return profil;
+    return null;
   } catch {
     return null;
   }
 }
 
 /**
- * Version synchrone pour compatibilité (utilise localStorage)
+ * Version synchrone - retourne null car on ne peut pas accéder à Firestore de manière synchrone
  */
 export function loadCurrentProfilSync(): Profil | null {
-  try {
-    const profil = loadFromStorage<Profil | null>(STORAGE_KEYS.profil, null);
-    if (!profil?.pseudo) return null;
-    return profil;
-  } catch {
-    return null;
-  }
+  // Ne peut pas charger depuis Firestore de manière synchrone
+  return null;
 }
 
 /**
@@ -224,41 +175,12 @@ export async function updateProfil(profil: Profil): Promise<void> {
       
       // Mettre à jour dans Firestore
       await updateProfilFirestore(user.uid, profilMigre);
-      // Sauvegarder dans localStorage pour compatibilité
-      saveToStorage(STORAGE_KEYS.profil, profilMigre);
       return;
     }
   } catch (error) {
     console.error("Erreur lors de la mise à jour Firebase:", error);
+    throw error;
   }
-
-  // Fallback : ancien système
-  const profilGlobal = getProfilGlobalByEmail(profil.email);
-  if (!profilGlobal) {
-    console.error("Profil global non trouvé pour l'email:", profil.email);
-    return;
-  }
-
-  // Migration du niveau pour le système local aussi
-  let niveauMigre = profil.niveau;
-  if (typeof profil.niveau === "string") {
-    niveauMigre = convertOldNiveauToNew(profil.niveau);
-  }
-
-  const profilComplet: ProfilComplet = {
-    ...profilGlobal,
-    ...profil,
-    niveau: niveauMigre,
-    passwordHash: profilGlobal.passwordHash,
-  };
-
-  const profilSansPassword: Profil = {
-    ...profil,
-    niveau: niveauMigre,
-  };
-
-  saveToStorage(STORAGE_KEYS.profil, profilSansPassword);
-  addOrUpdateProfilGlobal(profilComplet);
 }
 
 /**

@@ -1,5 +1,6 @@
 // Couche de stockage abstraite
-// Permet de facilement migrer vers Firebase/Supabase
+// DÉPRÉCIÉ : Toutes les données sont maintenant stockées dans Firebase Firestore
+// Ce fichier est conservé uniquement pour la compatibilité des imports
 
 const STORAGE_VERSION = "v1";
 
@@ -13,48 +14,19 @@ export const STORAGE_KEYS = {
   terrainsPersonnalises: `padelmatch_terrains_personnalises_${STORAGE_VERSION}`,
 } as const;
 
-// Fonctions génériques de stockage local
+// Fonctions vides - localStorage n'est plus utilisé
+// Toutes les données sont maintenant dans Firebase Firestore
 export function loadFromStorage<T>(key: string, fallback: T): T {
-  // Vérifier si nous sommes côté client
-  if (typeof window === "undefined") {
-    return fallback;
-  }
-  
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  // localStorage supprimé - retourner toujours le fallback
+  return fallback;
 }
 
 export function saveToStorage<T>(key: string, value: T): void {
-  // Vérifier si nous sommes côté client
-  if (typeof window === "undefined") {
-    return;
-  }
-  
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`Erreur lors de la sauvegarde de ${key}:`, error);
-  }
+  // localStorage supprimé - ne rien faire
+  // Les données sont sauvegardées directement dans Firebase Firestore
 }
 
 export function removeFromStorage(key: string): void {
-  // Vérifier si nous sommes côté client
-  if (typeof window === "undefined") {
-    return;
-  }
-  
-  try {
-    localStorage.removeItem(key);
-  } catch (error) {
-    console.error(`Erreur lors de la suppression de ${key}:`, error);
-  }
+  // localStorage supprimé - ne rien faire
+  // Les données sont supprimées directement dans Firebase Firestore
 }
-
-// TODO: Migration backend - remplacer par Firebase/Supabase
-// export async function loadFromBackend<T>(collection: string, id?: string): Promise<T | T[]>
-// export async function saveToBackend<T>(collection: string, data: T): Promise<T>
